@@ -16,20 +16,21 @@ const Type = {
  *
  * @abstract
  */
-class Report {
-  /** @constructor */
+class AbstractIssue {
+  /**
+   * @constructor
+   * @param {Symbol} type - Type of report created.
+   */
   constructor (type) {
-    if (new.target === Report) {
-      throw TypeError('new of abstract class Report')
+    if (new.target === AbstractIssue) {
+      throw TypeError('new of abstract class AbstractIssue')
     }
 
-    if (this.display === undefined || typeof this.display !== 'function') {
-      throw new TypeError('The method `display` is not defined.')
-    }
     this.type = type
   }
 
   /**
+   * @constant
    * @return {Symbol} Dependency constant.
    */
   static get DEPENDENCY () {
@@ -37,6 +38,7 @@ class Report {
   }
 
   /**
+   * @constant
    * @return {Symbol} Module constant.
    */
   static get MODULE () {
@@ -44,11 +46,11 @@ class Report {
   }
 
   /**
+   * @constant
    * @return {Symbol} Code constant.
    */
   static get CODE () {
     return Type.CODE
   }
 }
-
-module.exports = Report
+module.exports = AbstractIssue

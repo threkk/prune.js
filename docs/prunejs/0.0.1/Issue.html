@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Issue - Documentation</title>
+
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Analyser.html">Analyser</a></li><li><a href="DependenciesAnalyser.html">DependenciesAnalyser</a><ul class='methods'><li data-type='method'><a href="DependenciesAnalyser.html#analyse">analyse</a></li></ul></li><li><a href="DependencyIssue.html">DependencyIssue</a></li><li><a href="Issue.html">Issue</a></li><li><a href="Logger.html">Logger</a><ul class='methods'><li data-type='method'><a href="Logger.html#report">report</a></li></ul></li><li><a href="Project.html">Project</a><ul class='methods'><li data-type='method'><a href="Project.html#.isValidPath">isValidPath</a></li><li data-type='method'><a href="Project.html#_displayDependencies">_displayDependencies</a></li><li data-type='method'><a href="Project.html#analyse">analyse</a></li><li data-type='method'><a href="Project.html#execute">execute</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#DependencyType">DependencyType</a></li><li><a href="global.html#Type">Type</a></li></ul>
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">Issue</h1>
+    
+
+    
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>
+        Issue
+        </h2>
+        
+            <div class="class-description"><p>Parent abstract class.</p></div>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+
+    
+    <h2>Constructor</h2>
+    
+
+    <h4 class="name" id="Issue"><span class="type-signature">(abstract) </span>new Issue<span class="signature">(type)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="project_abstract-issue.js.html">project/abstract-issue.js</a>, <a href="project_abstract-issue.js.html#line19">line 19</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>type</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Symbol</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Type of report created.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    </div>
+
+    
+
+    
+
+    
+
+     
+
+    
+
+    
+        <h3 class="subsection-title">Members</h3>
+
+        
+            
+<h4 class="name" id=".CODE"><span class="type-signature">(static, constant) </span>CODE<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="project_abstract-issue.js.html">project/abstract-issue.js</a>, <a href="project_abstract-issue.js.html#line52">line 52</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id=".DEPENDENCY"><span class="type-signature">(static, constant) </span>DEPENDENCY<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="project_abstract-issue.js.html">project/abstract-issue.js</a>, <a href="project_abstract-issue.js.html#line36">line 36</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+<h4 class="name" id=".MODULE"><span class="type-signature">(static, constant) </span>MODULE<span class="type-signature"></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="project_abstract-issue.js.html">project/abstract-issue.js</a>, <a href="project_abstract-issue.js.html#line44">line 44</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Thu May 04 2017 00:51:10 GMT+0200 (CEST) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/linenumber.js"></script>
+</body>
+</html>

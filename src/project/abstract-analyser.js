@@ -1,11 +1,12 @@
 /**
 * Parent abstract class.
+*
 * @abstract
 */
-class Analyser {
+class AbstractAnalyser {
   /** @constructor */
   constructor () {
-    if (new.target === Analyser) {
+    if (new.target === AbstractAnalyser) {
       throw TypeError('new of abstract class Analyser')
     }
 
@@ -15,4 +16,4 @@ class Analyser {
   }
 }
 
-module.exports = Analyser
+module.exports = AbstractAnalyser

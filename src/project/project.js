@@ -1,6 +1,9 @@
 const fs = require('fs')
+const chalk = require('chalk')
+const ora = require('ora')
 const path = require('path')
 const validator = require('package-json-validator').PJV
+const _ = require('underscore')
 
 /**
  * The Project class acts as a monad and holds all the different analysers to
@@ -15,6 +18,7 @@ class Project {
    * @param {Logger} logger - Logger where the analysers report their findings.
    */
   constructor (p, logger) {
+    this._analysers = []
     this._path = path.resolve(p)
     this._logger = logger
   }
@@ -24,10 +28,43 @@ class Project {
    * logger.
    *
    * @param {Analyser} analyser - Analyser to attach.
+   * @return {Project} - The objects itself to allow method chaining.
    */
   analyse (analyser) {
-    analyser.analyse(this._path, this._logger)
+    this._analysers.push(analyser)
     return this
+  }
+
+  /**
+   * Executes all the registered analysers and display the results in the
+   * screen.
+   */
+  execute () {
+    const spinner = ora('Processing...').start()
+    Promise.all(
+      _.map(this._analysers, (a) => a.analyse(this._path, this._logger))
+    )
+    .then(() => {
+      spinner.succeed('Success!')
+      this._displayDependencies()
+    })
+    .catch((err) => {
+      spinner.fail(`Error found: ${err}`)
+    })
+  }
+
+  /** Displays a message showing the issues with the dependencies.  */
+  _displayDependencies () {
+    const amount = this._logger.dependencies.length
+
+    console.log(chalk.bold('Dependencies'))
+    if (amount === 1) {
+      console.log(`1 dependency issue was found.`)
+    } else {
+      console.log((`${amount} dependency issues were found.`))
+    }
+
+    _.map(this._logger.dependencies, (dep) => console.log(`- ${dep}`))
   }
 
   /**
