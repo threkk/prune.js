@@ -14,12 +14,12 @@ class Project {
    * Creates a Project instance
    *
    * @constructor
-   * @param {string} p - Path to the project.
+   * @param {Object} config - Configuration of the project from the CLI.
    * @param {Logger} logger - Logger where the analysers report their findings.
    */
-  constructor (p, logger) {
+  constructor (config, logger) {
     this._analysers = []
-    this._path = path.resolve(p)
+    this._config = config
     this._logger = logger
   }
 
@@ -30,8 +30,8 @@ class Project {
    * @param {Analyser} analyser - Analyser to attach.
    * @return {Project} - The objects itself to allow method chaining.
    */
-  analyse (analyser) {
-    this._analysers.push(analyser)
+  analyse (Analyser) {
+    this._analysers.push(new Analyser(this._config))
     return this
   }
 
@@ -42,11 +42,13 @@ class Project {
   execute () {
     const spinner = ora('Processing...').start()
     Promise.all(
-      _.map(this._analysers, (a) => a.analyse(this._path, this._logger))
+      _.map(this._analysers, (a) => a.analyse(this._logger))
     )
     .then(() => {
       spinner.succeed('Success!')
       this._displayDependencies()
+      this._displayModules()
+      this._displayCode()
     })
     .catch((err) => {
       spinner.fail(`Error found: ${err}`)
@@ -65,6 +67,34 @@ class Project {
     }
 
     _.map(this._logger.dependencies, (dep) => console.log(`- ${dep}`))
+  }
+
+  /** Displays a message showing the issues with the modules.  */
+  _displayModules () {
+    const amount = this._logger.modules.length
+
+    console.log(chalk.bold('Modules'))
+    if (amount === 1) {
+      console.log(`1 module issue was found.`)
+    } else {
+      console.log((`${amount} module issues were found.`))
+    }
+
+    _.map(this._logger.modules, (mod) => console.log(`- ${mod}`))
+  }
+
+  /** Displays a message showing the issues with the fragments of code.  */
+  _displayCode () {
+    const amount = this._logger.code.length
+
+    console.log(chalk.bold('Code'))
+    if (amount === 1) {
+      console.log(`1 code issue was found.`)
+    } else {
+      console.log((`${amount} code issues were found.`))
+    }
+
+    _.map(this._logger.code, (frag) => console.log(`- ${frag}`))
   }
 
   /**

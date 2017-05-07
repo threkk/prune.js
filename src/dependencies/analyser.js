@@ -13,27 +13,24 @@ const DependencyIssue = require('./issue')
 class DependenciesAnalyser extends AbstractAnalyser {
   /**
    * @constructor
-   * @param {array} ignoreDirs - Array containing the routes of the directories
-   * to ignore by the analysers.
-   * @param {boolean} es7 - Enables ES7 support.
-   * @param {boolean} jsx - Enables JSX support.
+   * @param {Object} config - Project configuration.
    */
-  constructor (ignoreDirs, es7 = false, jsx = false) {
-    super()
+  constructor (config) {
+    super(config.path)
     const parsers = {
       '*.js': depcheck.parser.es6
     }
 
-    if (es7) {
+    if (config.withES7) {
       parsers['*.js'] = depcheck.parser.es7
     }
 
-    if (jsx) {
+    if (config.withJSX) {
       parsers['*.jsx'] = depcheck.parser.jsx
     }
 
-    this.config = {
-      ignoreDirs,
+    this._config = {
+      ignoreDirs: config.ignoreDirs,
       parsers,
       detectors: [
         depcheck.detector.gruntLoadTaskCallExpression, // Not default.
@@ -52,9 +49,9 @@ class DependenciesAnalyser extends AbstractAnalyser {
    * @return {Promise} Promise holding the results. These results are also
    * logged in the Logger.
    */
-  analyse (path, logger) {
+  analyse (logger) {
     return new Promise((resolve, reject) => {
-      depcheck(path, this.config, (unused) => {
+      depcheck(this.path, this._config, (unused) => {
         const reports = _.flatten([
           _.map(unused.dependencies, (dependency) =>
             new DependencyIssue(DependencyIssue.DEP, dependency)),
