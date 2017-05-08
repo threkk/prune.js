@@ -1,7 +1,7 @@
 const depcheck = require('depcheck')
 const _ = require('underscore')
 
-const AbstractAnalyser = require('../project/abstract-analyser')
+const AbstractAnalyser = require('../abstract/analyser')
 const DependencyIssue = require('./issue')
 
 /**

@@ -1,4 +1,4 @@
-const AbstractIssue = require('./abstract-issue')
+const AbstractIssue = require('../abstract/issue')
 
 /**
  * Stores all the reported issues found in the project. It support different

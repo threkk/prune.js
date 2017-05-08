@@ -1,4 +1,4 @@
-const AbstractIssue = require('../project/abstract-issue')
+const AbstractIssue = require('../abstract/issue')
 
 /**
  * Different types of dependecy issues that can be defined.
