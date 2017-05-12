@@ -1,9 +1,10 @@
 const fs = require('fs')
-const chalk = require('chalk')
 const ora = require('ora')
 const path = require('path')
 const validator = require('package-json-validator').PJV
 const _ = require('underscore')
+
+const { extname, resolve } = require('path')
 
 /**
  * The Project class acts as a monad and holds all the different analysers to
@@ -20,6 +21,7 @@ class Project {
   constructor (config, logger) {
     this._analysers = []
     this._config = config
+    this._files = this._files(config.path)
     this._logger = logger
   }
 
@@ -44,57 +46,50 @@ class Project {
     Promise.all(
       _.map(this._analysers, (a) => a.analyse(this._logger))
     )
-    .then(() => {
-      spinner.succeed('Success!')
-      this._displayDependencies()
-      this._displayModules()
-      this._displayCode()
-    })
-    .catch((err) => {
-      spinner.fail(`Error found: ${err}`)
-    })
+      .then(() => {
+        spinner.succeed('Success!')
+        this._logger.displayDependencies()
+        this._logger.displayModules()
+        this._logger.displayCode()
+      })
+      .catch((err) => {
+        spinner.fail(`Error found: ${err}`)
+      })
   }
 
-  /** Displays a message showing the issues with the dependencies.  */
-  _displayDependencies () {
-    const amount = this._logger.dependencies.length
+  /**
+   * Extracts all the file paths from the project. Valid files depend on the
+   * configuration. `node_modules` are always ignored.
+   */
+  _files () {
+    const dirs = []
+    const files = []
+    const validExt = ['.js']
 
-    console.log(chalk.bold('Dependencies'))
-    if (amount === 1) {
-      console.log(`1 dependency issue was found.`)
-    } else {
-      console.log((`${amount} dependency issues were found.`))
+    if (this._config.withJSX) validExt.push('.jsx')
+
+    dirs.push(this._config.path)
+
+    while (dirs.length > 0) {
+      const dir = dirs.pop()
+
+      _.each(fs.readdirSync(dir), (file) => {
+        const filePath = resolve(dir, file)
+        const isIgnored = this._config.ignoreDirs.includes(filePath)
+        const isHidden = file.charAt(0) === '.'
+
+        if (!isIgnored && !isHidden) {
+          const stats = fs.statSync(filePath)
+
+          if (stats.isDirectory()) {
+            dirs.push(filePath)
+          } else if (validExt.includes(extname(file))) {
+            files.push(filePath)
+          }
+        }
+      })
     }
-
-    _.map(this._logger.dependencies, (dep) => console.log(`- ${dep}`))
-  }
-
-  /** Displays a message showing the issues with the modules.  */
-  _displayModules () {
-    const amount = this._logger.modules.length
-
-    console.log(chalk.bold('Modules'))
-    if (amount === 1) {
-      console.log(`1 module issue was found.`)
-    } else {
-      console.log((`${amount} module issues were found.`))
-    }
-
-    _.map(this._logger.modules, (mod) => console.log(`- ${mod}`))
-  }
-
-  /** Displays a message showing the issues with the fragments of code.  */
-  _displayCode () {
-    const amount = this._logger.code.length
-
-    console.log(chalk.bold('Code'))
-    if (amount === 1) {
-      console.log(`1 code issue was found.`)
-    } else {
-      console.log((`${amount} code issues were found.`))
-    }
-
-    _.map(this._logger.code, (frag) => console.log(`- ${frag}`))
+    return files
   }
 
   /**

@@ -10,7 +10,6 @@ const Logger = require('./project/logger')
 const Project = require('./project/project')
 
 const DependenciesAnalyser = require('./dependencies/analyser')
-const ModulesAnalyser = require('./modules/analyser')
 
 // Default configuration.
 const config = {
@@ -30,7 +29,7 @@ program
   .version(pkg.version)
   .description(pkg.description)
   .usage('[options] <path>')
-  .option('-i, --ignore [dir]', 'Excludes the selected folder', ignoreAcc, [])
+  .option('-i, --ignore [dir]', 'Excludes the selected folder. `node_modules` are always ignored.', ignoreAcc, [])
   .option('-x, --jsx', 'Adds JSX syntax support.')
   .option('-7, --es7', 'Adds ES7 support.')
   .arguments('<path>')
@@ -52,11 +51,14 @@ if (program.ignore.length > 0) {
   config.ignoreDirs = _.map(program.ignore, (dir) => resolve(config.path, dir))
 }
 
+// We always ignore the node_modules.
+config.ignoreDirs.push(resolve(config.path, './node_modules'))
+// unique elements only in the array?
+
 // Initalises the project and logger.
 const logger = new Logger()
 const project = new Project(config, logger)
 
 project
   .analyse(DependenciesAnalyser)
-// .analyse(ModulesAnalyser)
   .execute()

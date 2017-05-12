@@ -1,3 +1,5 @@
+const chalk = require('chalk')
+const _ = require('underscore')
 const AbstractIssue = require('../abstract/issue')
 
 /**
@@ -51,6 +53,51 @@ class Logger {
    */
   get code () {
     return this._code
+  }
+
+  /** Displays a message showing the issues with the dependencies. */
+  displayDependencies () {
+    const amount = this._dependencies.length
+
+    console.log('')
+    console.log(chalk.bold('Dependencies'))
+    if (amount === 1) {
+      console.log(`1 dependency issue was found.`)
+    } else {
+      console.log((`${amount} dependency issues were found.`))
+    }
+
+    _.map(this._dependencies, (dep) => console.log(`- ${dep}`))
+  }
+
+  /** Displays a message showing the issues with the modules.  */
+  displayModules () {
+    const amount = this._modules.length
+
+    console.log('')
+    console.log(chalk.bold('Modules'))
+    if (amount === 1) {
+      console.log(`1 module issue was found.`)
+    } else {
+      console.log((`${amount} module issues were found.`))
+    }
+
+    _.map(this._modules, (mod) => console.log(`- ${mod}`))
+  }
+
+  /** Displays a message showing the issues with the fragments of code. */
+  displayCode () {
+    const amount = this._code.length
+
+    console.log('')
+    console.log(chalk.bold('Code'))
+    if (amount === 1) {
+      console.log(`1 code issue was found.`)
+    } else {
+      console.log((`${amount} code issues were found.`))
+    }
+
+    _.map(this._code, (frag) => console.log(`- ${frag}`))
   }
 }
 
