@@ -14,6 +14,7 @@ class Logger {
   /** @constructor */
   constructor () {
     this._dependencies = []
+    this._errors = []
     this._modules = []
     this._code = []
   }
@@ -26,7 +27,8 @@ class Logger {
   report (issue) {
     switch (issue.type) {
       case AbstractIssue.DEPENDENCY : this._dependencies.push(issue); break
-      case AbstractIssue.MODULE: this._modules.push(issue); break
+      case AbstractIssue.ERROR : this._errors.push(issue); break
+      case AbstractIssue.MODULE : this._modules.push(issue); break
       case AbstractIssue.CODE : this._code.push(issue); break
     }
   }
@@ -37,6 +39,14 @@ class Logger {
    */
   get dependencies () {
     return this._dependencies
+  }
+
+  /**
+   * Retrieves the errors found during the analysis.
+   * @return {array} - Errors.
+   */
+  get errors () {
+    return this._errors
   }
 
   /**
@@ -59,7 +69,6 @@ class Logger {
   displayDependencies () {
     const amount = this._dependencies.length
 
-    console.log('')
     console.log(chalk.bold('Dependencies'))
     if (amount === 1) {
       console.log(`1 dependency issue was found.`)
@@ -74,7 +83,6 @@ class Logger {
   displayModules () {
     const amount = this._modules.length
 
-    console.log('')
     console.log(chalk.bold('Modules'))
     if (amount === 1) {
       console.log(`1 module issue was found.`)
@@ -89,7 +97,6 @@ class Logger {
   displayCode () {
     const amount = this._code.length
 
-    console.log('')
     console.log(chalk.bold('Code'))
     if (amount === 1) {
       console.log(`1 code issue was found.`)
@@ -98,6 +105,20 @@ class Logger {
     }
 
     _.map(this._code, (frag) => console.log(`- ${frag}`))
+  }
+
+  /** Displays a message in the stderr showing errors during the analysis. */
+  displayErrors () {
+    const amount = this._errors.length
+
+    console.error(chalk.bold('Errors'))
+    if (amount === 1) {
+      console.error(`1 error was found analysing the project.`)
+    } else {
+      console.error(`${amount} erros were found analysing the project.`)
+    }
+
+    _.map(this._errors, (err) => console.error(chalk.red(`- ${err}`)))
   }
 }
 

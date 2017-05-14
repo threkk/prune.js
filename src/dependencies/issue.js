@@ -28,18 +28,18 @@ class DependencyIssue extends AbstractIssue {
    */
   constructor (depType, name) {
     super(AbstractIssue.DEPENDENCY)
-    this.depType = depType
-    this.name = name
+    this._depType = depType
+    this._name = name
   }
 
   toString () {
     let msg
-    if (this.depType === DependencyType.DEP) {
-      msg = `The dependency ${this.name} is not used.`
-    } else if (this.depType === DependencyType.DEV) {
-      msg = `The dev-dependency ${this.name} is not used.`
-    } else if (this.depType === DependencyType.MIS) {
-      msg = `The package ${this.name} has been found in the node_modules but ` +
+    if (this._depType === DependencyType.DEP) {
+      msg = `The dependency ${this._name} is not used.`
+    } else if (this._depType === DependencyType.DEV) {
+      msg = `The dev-dependency ${this._name} is not used.`
+    } else if (this._depType === DependencyType.MIS) {
+      msg = `The package ${this._name} has been found in the node_modules but ` +
             `it is not in the package.json`
     }
     return msg

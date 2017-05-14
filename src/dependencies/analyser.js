@@ -15,8 +15,9 @@ class DependenciesAnalyser extends AbstractAnalyser {
    * @constructor
    * @param {Object} config - Project configuration.
    */
-  constructor (config) {
-    super(config.path)
+  constructor (config, files) {
+    super()
+
     const parsers = {
       '*.js': depcheck.parser.es6
     }
@@ -29,6 +30,7 @@ class DependenciesAnalyser extends AbstractAnalyser {
       parsers['*.jsx'] = depcheck.parser.jsx
     }
 
+    this._path = config.path
     this._config = {
       ignoreDirs: config.ignoreDirs,
       parsers,
@@ -51,7 +53,7 @@ class DependenciesAnalyser extends AbstractAnalyser {
    */
   analyse (logger) {
     return new Promise((resolve, reject) => {
-      depcheck(this.path, this._config, (unused) => {
+      depcheck(this._path, this._config, (unused) => {
         const reports = _.flatten([
           _.map(unused.dependencies, (dependency) =>
             new DependencyIssue(DependencyIssue.DEP, dependency)),

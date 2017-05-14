@@ -7,6 +7,7 @@
  */
 const Type = {
   DEPENDENCY: Symbol('DEPENDENCY'),
+  ERROR: Symbol('ERROR'),
   MODULE: Symbol('MODULE'),
   CODE: Symbol('CODE')
 }
@@ -35,6 +36,14 @@ class AbstractIssue {
    */
   static get DEPENDENCY () {
     return Type.DEPENDENCY
+  }
+
+  /**
+   * @constant
+   * @return {Symbol} Error constant.
+   */
+  static get ERROR () {
+    return Type.ERROR
   }
 
   /**

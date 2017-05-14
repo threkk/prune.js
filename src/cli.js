@@ -1,23 +1,21 @@
 #!/usr/bin/env node --harmony
-const chalk = require('chalk')
 const pkg = require('../package.json')
 const program = require('commander')
-const _ = require('underscore')
 const { exit } = require('process')
-const { resolve } = require('path')
 
+const Config = require('./project/config')
+const ErrorIssue = require('./project/error')
 const Logger = require('./project/logger')
 const Project = require('./project/project')
 
 const DependenciesAnalyser = require('./dependencies/analyser')
+const ModulesAnalyser = require('./modules/analyser')
 
 // Default configuration.
-const config = {
-  path: resolve('.'),
-  ignoreDirs: [],
-  withES7: false,
-  withJSX: false
-}
+let config = null
+
+// Initialise the logger.
+const logger = new Logger()
 
 function ignoreAcc (val, acc) {
   acc.push(val)
@@ -36,9 +34,11 @@ program
   .action((p) => {
     const isValid = Project.isValidPath(p)
     if (isValid.valid) {
-      config.path = resolve(p)
+      config = new Config(p)
     } else {
-      console.error(chalk.red(isValid.error))
+      const error = new ErrorIssue(p, isValid.error)
+      logger.report(error)
+      logger.displayErrors()
       exit(1)
     }
   })
@@ -47,18 +47,17 @@ program
 // Extracts the configuration.
 if (program.es7) config.withES7 = true
 if (program.jsx) config.withJSX = true
+
 if (program.ignore.length > 0) {
-  config.ignoreDirs = _.map(program.ignore, (dir) => resolve(config.path, dir))
+  for (let dir of program.ignore) {
+    config.ignoreDirs = dir
+  }
 }
 
-// We always ignore the node_modules.
-config.ignoreDirs.push(resolve(config.path, './node_modules'))
-// unique elements only in the array?
-
-// Initalises the project and logger.
-const logger = new Logger()
+// Initalises the project.
 const project = new Project(config, logger)
 
 project
   .analyse(DependenciesAnalyser)
+  .analyse(ModulesAnalyser)
   .execute()

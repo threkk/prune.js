@@ -15,7 +15,7 @@ class Project {
    * Creates a Project instance
    *
    * @constructor
-   * @param {Object} config - Configuration of the project from the CLI.
+   * @param {Config} config - Configuration of the project from the CLI.
    * @param {Logger} logger - Logger where the analysers report their findings.
    */
   constructor (config, logger) {
@@ -33,7 +33,7 @@ class Project {
    * @return {Project} - The objects itself to allow method chaining.
    */
   analyse (Analyser) {
-    this._analysers.push(new Analyser(this._config))
+    this._analysers.push(new Analyser(this._config, this._files))
     return this
   }
 
@@ -51,6 +51,7 @@ class Project {
         this._logger.displayDependencies()
         this._logger.displayModules()
         this._logger.displayCode()
+        this._logger.displayErrors()
       })
       .catch((err) => {
         spinner.fail(`Error found: ${err}`)
