@@ -4,7 +4,8 @@ const path = require('path')
 const validator = require('package-json-validator').PJV
 const _ = require('underscore')
 
-const { extname, resolve } = require('path')
+const { dirname, extname, isAbsolute, resolve } = require('path')
+const { cwd } = require('process')
 
 /**
  * The Project class acts as a monad and holds all the different analysers to
@@ -102,14 +103,20 @@ class Project {
    */
   static isValidPath (p) {
     if (fs.existsSync(p)) {
-      const pkgPath = path.resolve(p, 'package.json')
+      let pkgPath = null
+
+      if (isAbsolute(p)) {
+        pkgPath = path.resolve(p, 'package.json')
+      } else {
+        pkgPath = path.resolve(cwd(), p, 'package.json')
+      }
 
       if (fs.existsSync(pkgPath)) {
         const pkg = fs.readFileSync(pkgPath, 'utf-8')
         const validate = validator.validate(pkg)
 
         if (validate.valid) {
-          return { valid: true }
+          return { valid: true, path: dirname(pkgPath) }
         }
 
         let reason = 'The package.json found is invalid: '

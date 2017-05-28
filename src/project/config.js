@@ -24,6 +24,10 @@ class Config {
     return this._withJSX
   }
 
+  set path (val) {
+    this._path = val
+  }
+
   set ignoreDirs (val) {
     const file = resolve(this._path, val)
     if (!this._ignoreDirs.includes(file)) {

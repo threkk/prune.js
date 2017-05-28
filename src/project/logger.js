@@ -77,6 +77,7 @@ class Logger {
     }
 
     _.map(this._dependencies, (dep) => console.log(`- ${dep}`))
+    console.log('')
   }
 
   /** Displays a message showing the issues with the modules.  */
@@ -91,6 +92,7 @@ class Logger {
     }
 
     _.map(this._modules, (mod) => console.log(`- ${mod}`))
+    console.log('')
   }
 
   /** Displays a message showing the issues with the fragments of code. */
@@ -105,6 +107,7 @@ class Logger {
     }
 
     _.map(this._code, (frag) => console.log(`- ${frag}`))
+    console.log('')
   }
 
   /** Displays a message in the stderr showing errors during the analysis. */
@@ -119,6 +122,7 @@ class Logger {
     }
 
     _.map(this._errors, (err) => console.error(chalk.red(`- ${err}`)))
+    console.log('')
   }
 }
 

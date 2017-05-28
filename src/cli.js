@@ -12,7 +12,7 @@ const DependenciesAnalyser = require('./dependencies/analyser')
 const ModulesAnalyser = require('./modules/analyser')
 
 // Default configuration.
-let config = null
+const config = new Config()
 
 // Initialise the logger.
 const logger = new Logger()
@@ -34,7 +34,7 @@ program
   .action((p) => {
     const isValid = Project.isValidPath(p)
     if (isValid.valid) {
-      config = new Config(p)
+      config.path = isValid.path
     } else {
       const error = new ErrorIssue(p, isValid.error)
       logger.report(error)

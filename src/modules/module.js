@@ -10,6 +10,10 @@ class Module {
     this._uses = uses
   }
 
+  get filePath () {
+    return this._filePath
+  }
+
   get isExported () {
     return this._isExported
   }
