@@ -1,5 +1,4 @@
 const chalk = require('chalk')
-const _ = require('underscore')
 const AbstractIssue = require('../abstract/issue')
 
 /**
@@ -76,7 +75,7 @@ class Logger {
       console.log((`${amount} dependency issues were found.`))
     }
 
-    _.map(this._dependencies, (dep) => console.log(`- ${dep}`))
+    this._dependencies.forEach((dep) => console.log(`- ${dep}`))
     console.log('')
   }
 
@@ -91,7 +90,7 @@ class Logger {
       console.log((`${amount} module issues were found.`))
     }
 
-    _.map(this._modules, (mod) => console.log(`- ${mod}`))
+    this._modules.forEach((mod) => console.log(`- ${mod}`))
     console.log('')
   }
 
@@ -106,7 +105,7 @@ class Logger {
       console.log((`${amount} code issues were found.`))
     }
 
-    _.map(this._code, (frag) => console.log(`- ${frag}`))
+    this._code.forEach((frag) => console.log(`- ${frag}`))
     console.log('')
   }
 
@@ -121,7 +120,7 @@ class Logger {
       console.error(`${amount} erros were found analysing the project.`)
     }
 
-    _.map(this._errors, (err) => console.error(chalk.red(`- ${err}`)))
+    this._errors.forEach((err) => console.error(chalk.red(`- ${err}`)))
     console.log('')
   }
 }

@@ -2,7 +2,6 @@ const fs = require('fs')
 const ora = require('ora')
 const path = require('path')
 const validator = require('package-json-validator').PJV
-const _ = require('underscore')
 
 const { dirname, extname, isAbsolute, resolve } = require('path')
 const { cwd } = require('process')
@@ -45,18 +44,18 @@ class Project {
   execute () {
     const spinner = ora('Processing...').start()
     Promise.all(
-      _.map(this._analysers, (a) => a.analyse(this._logger))
+      this._analysers.map((a) => a.analyse(this._logger))
     )
-      .then(() => {
-        spinner.succeed('Success!')
-        this._logger.displayDependencies()
-        this._logger.displayModules()
-        this._logger.displayCode()
-        this._logger.displayErrors()
-      })
-      .catch((err) => {
-        spinner.fail(`Error found: ${err}`)
-      })
+    .then(() => {
+      spinner.succeed('Success!')
+      this._logger.displayDependencies()
+      this._logger.displayModules()
+      this._logger.displayCode()
+      this._logger.displayErrors()
+    })
+    .catch((err) => {
+      spinner.fail(`Error found: ${err}`)
+    })
   }
 
   /**
@@ -75,7 +74,7 @@ class Project {
     while (dirs.length > 0) {
       const dir = dirs.pop()
 
-      _.each(fs.readdirSync(dir), (file) => {
+      fs.readdirSync(dir).forEach((file) => {
         const filePath = resolve(dir, file)
         const isIgnored = this._config.ignoreDirs.includes(filePath)
         const isHidden = file.charAt(0) === '.'

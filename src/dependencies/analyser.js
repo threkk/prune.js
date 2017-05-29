@@ -1,5 +1,4 @@
 const depcheck = require('depcheck')
-const _ = require('underscore')
 
 const AbstractAnalyser = require('../abstract/analyser')
 const DependencyIssue = require('./issue')
@@ -13,7 +12,7 @@ const DependencyIssue = require('./issue')
 class DependenciesAnalyser extends AbstractAnalyser {
   /**
    * @constructor
-   * @param {Object} config - Project configuration.
+   * @param {Config} config - Project configuration.
    */
   constructor (config, files) {
     super()
@@ -46,7 +45,6 @@ class DependenciesAnalyser extends AbstractAnalyser {
   /**
    * Executes the analyser and reports the findings to the logger.
    *
-   * @param {string} path - Path to the project.
    * @param {Logger} logger - Logger to report the findings.
    * @return {Promise} Promise holding the results. These results are also
    * logged in the Logger.
@@ -54,15 +52,15 @@ class DependenciesAnalyser extends AbstractAnalyser {
   analyse (logger) {
     return new Promise((resolve, reject) => {
       depcheck(this._path, this._config, (unused) => {
-        const reports = _.flatten([
-          _.map(unused.dependencies, (dependency) =>
+        const reports = [].concat(
+          unused.dependencies.map((dependency) =>
             new DependencyIssue(DependencyIssue.DEP, dependency)),
-          _.map(unused.devDependencies, (devDep) =>
+          unused.devDependencies.map((devDep) =>
             new DependencyIssue(DependencyIssue.DEV, devDep)),
-          _.map(unused.missing, (missing) =>
+          Object.values(unused.missing).map((missing) =>
             new DependencyIssue(DependencyIssue.MIS, missing))
-        ])
-        _.map(reports, (report) => logger.report(report))
+        )
+        reports.forEach((report) => logger.report(report))
         // Should we remove the body of this resolve? It has been stored already
         // in the logger.
         resolve(reports)

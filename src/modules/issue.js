@@ -1,14 +1,39 @@
 const AbstractIssue = require('../abstract/issue')
 
+/**
+ * Different types of module issues that can be defined.
+ *
+ * @constant
+ * @type {Object}
+ * @default
+ */
 const ModuleCase = {
   UNUSED: Symbol('Unused'),
   SCRIPT: Symbol('Script'),
   MISSING: Symbol('Missing')
 }
 
+/**
+ * Reports an issue regarding the modules:
+ *
+ * - Unused modules (exported but not imported).
+ * - Missing modules (imported but not exported).
+ * - Scripts (modules which import other modules but do not export anything).
+ */
 class ModuleIssue extends AbstractIssue {
+  /**
+   * @constructor
+   * @param {Symbol} modType - Case of module we are facing.
+   * @param {string} path - Path to the module.
+   * @throws Error - If `modCase` is not a valid module case.
+   */
   constructor (modCase, path) {
     super(AbstractIssue.MODULE)
+
+    if (!Object.values(ModuleCase).includes(modCase)) {
+      throw Error(`The type ${modCase} is not a valid type.`)
+    }
+
     this._modCase = modCase
     this._path = path
   }
@@ -28,14 +53,26 @@ class ModuleIssue extends AbstractIssue {
     }
   }
 
+  /**
+   * @constant
+   * @return {Symbol} Unused module constant.
+   */
   static get UNUSED () {
     return ModuleCase.UNUSED
   }
 
+  /**
+   * @constant
+   * @return {Symbol} Script module constant.
+   */
   static get SCRIPT () {
     return ModuleCase.SCRIPT
   }
 
+  /**
+   * @constant
+   * @return {Symbol} Missing module constant.
+   */
   static get MISSING () {
     return ModuleCase.MISSING
   }

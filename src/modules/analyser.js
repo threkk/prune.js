@@ -8,7 +8,19 @@ const ModuleIssue = require('./issue')
 
 const pkg = require('../../package.json')
 
+/**
+ * Analyses the modules of the project, looking for modules that have been
+ * declared but never imported, modules that are imported but they are missing
+ * and files that import modules but do not export anything else (named as
+ * script for convenience).
+ */
 class ModulesAnalyser extends AbstractAnalyser {
+  /**
+   * @constructor
+   * @param {Config} config - Project configuration.
+   * @param {array} files - Array containing the list of file paths of the
+   * project.
+   */
   constructor (config, files) {
     super()
     this._files = files
@@ -17,9 +29,17 @@ class ModulesAnalyser extends AbstractAnalyser {
     this._withJSX = config.withJSX
   }
 
+  /**
+   * Executes the analyser and reports the findings to the logger.
+   *
+   * @param {Logger} logger - Logger to report the findings.
+   * @return {Promise} Promise holding the results. These results are also
+   * logged in the logger.
+   */
   analyse (logger) {
     return new Promise((resolve, reject) => {
       const modules = []
+
       for (const filePath of this._files) {
         try {
           const module = Module.create(filePath, this._withES7, this._withJSX)
@@ -28,6 +48,8 @@ class ModulesAnalyser extends AbstractAnalyser {
             modules.push(module)
           }
         } catch (e) {
+          // Some error has been found by the parser and it is reported to the
+          // logger.
           const error = new ErrorIssue(filePath, e)
           logger.report(error)
         }
@@ -36,6 +58,7 @@ class ModulesAnalyser extends AbstractAnalyser {
       const declaredModules = modules.map(module => module.filePath)
       const exportedModules = []
       let importedModules = new Set()
+
       for (let module of modules) {
         if (module.isExported) {
           exportedModules.push(module.filePath)
@@ -55,12 +78,16 @@ class ModulesAnalyser extends AbstractAnalyser {
       const unusedIssues = unused.map(path => new ModuleIssue(ModuleIssue.UNUSED, path))
       const missingIssues = missing.map((path) => {
         const ext = nPath.extname(path)
+
         if (ext === 'js' || ext === 'jsx') {
           return new ModuleIssue(ModuleIssue.MISSING, path)
         }
+
         return null
       }).filter(path => path != null)
 
+      // We want to avoid marking the defined scripts and the entry point of the
+      // project as files which do not export anything.
       let main = null
       if (pkg.main != null) {
         main = nPath.resolve(this._root, pkg.main)
@@ -77,7 +104,6 @@ class ModulesAnalyser extends AbstractAnalyser {
 
       const scriptIssues = scripts.map((path) => {
         if (path === main) {
-          console.log(`Skipped ${path}`)
           return null
         }
 
@@ -87,6 +113,7 @@ class ModulesAnalyser extends AbstractAnalyser {
 
         return new ModuleIssue(ModuleIssue.SCRIPT, path)
       })
+      .filter((path) => path != null)
 
       const allIssues = [].concat(unusedIssues, missingIssues, scriptIssues)
       allIssues.forEach(issue => logger.report(issue))

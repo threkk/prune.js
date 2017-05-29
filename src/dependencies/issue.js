@@ -25,9 +25,15 @@ class DependencyIssue extends AbstractIssue {
    * @constructor
    * @param {Symbol} depType - Type of dependecy issue.
    * @param {string} name - Name of the dependency.
+   * @throws Error - If `depType` is not a valid dependency type.
    */
   constructor (depType, name) {
     super(AbstractIssue.DEPENDENCY)
+
+    if (!Object.values(DependencyType).includes(depType)) {
+      throw new Error(`The type ${depType} is not a valid type.`)
+    }
+
     this._depType = depType
     this._name = name
   }
