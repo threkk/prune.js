@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>dependencies/issue.js - Documentation</title>
+    <title>project/ast.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">dependencies/issue.js</h1>
+    <h1 class="page-title">project/ast.js</h1>
     
 
     
@@ -37,85 +37,58 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const AbstractIssue = require('../abstract/issue')
+            <pre class="prettyprint source linenums"><code>const { parse } = require('babylon')
+const fs = require('fs')
 
 /**
- * Different types of dependecy issues that can be defined.
- *
- * @constant
- * @type {Object}
- * @default
+ * Generates an AST of the given JavaScript file using the Babel compiler.
  */
-const DependencyType = {
-  DEP: Symbol('Dependency'),
-  DEV: Symbol('Dev-dependency'),
-  MIS: Symbol('Missing')
-}
-
-/**
- * Reports an issue regarding the depencies:
- *
- * - Unused `dependecies`.
- * - Unused `devDependencies`.
- * - Modules in `node_modules` not reported in the `package.json`.
- */
-class DependencyIssue extends AbstractIssue {
+class AST {
   /**
    * @constructor
-   * @param {Symbol} depType - Type of dependecy issue.
-   * @param {string} name - Name of the dependency.
-   * @throws Error - If `depType` is not a valid dependency type.
+   * @param {string} path - Path to the file.
+   * @param {boolean} es7 - If the parser should enable `ES7` features.
+   * @param {boolean} jsx - If the parser should enable `JSX`.
    */
-  constructor (depType, name) {
-    super(AbstractIssue.DEPENDENCY)
+  constructor (path, es7 = false, jsx = false) {
+    this._path = path
 
-    if (!Object.values(DependencyType).includes(depType)) {
-      throw new Error(`The type ${depType} is not a valid type.`)
+    const plugins = []
+    if (es7) plugins.push('*')
+    if (jsx) plugins.push('jsx')
+
+    this._options = {
+      allowImportExportEverywhere: true, // Allows imports everywhere.
+      sourceType: 'module', // Enables the import/export statements.
+      ranges: true, // Add ranges to the nodes [node.start, node.end]
+      plugins
     }
-
-    this._depType = depType
-    this._name = name
+    this._ast = this._buildAst()
   }
 
-  toString () {
-    let msg
-    if (this._depType === DependencyType.DEP) {
-      msg = `The dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.DEV) {
-      msg = `The dev-dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.MIS) {
-      msg = `The package ${this._name} has been found in the node_modules but ` +
-            `it is not in the package.json`
-    }
-    return msg
+  /** @return {Object} AST tree of the file. */
+  get ast () {
+    return this._ast
+  }
+
+  /** @return {string} Path to the file */
+  get path () {
+    return this._path
   }
 
   /**
-   * @constant
-   * @return {Symbol} Dependency constant.
+   * Reads the file and executes the parser.
+   *
+   * @private
+   * @return {Object} AST tree of the file.
    */
-  static get DEP () {
-    return DependencyType.DEP
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Dev-dependency constant.
-   */
-  static get DEV () {
-    return DependencyType.DEV
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Missing dependency constant.
-   */
-  static get MIS () {
-    return DependencyType.MIS
+  _buildAst () {
+    const file = fs.readFileSync(this._path, 'utf-8')
+    return parse(file, this._options)
   }
 }
 
-module.exports = DependencyIssue
+module.exports = AST
 </code></pre>
         </article>
     </section>

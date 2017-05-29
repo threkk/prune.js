@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>dependencies/issue.js - Documentation</title>
+    <title>project/error.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">dependencies/issue.js</h1>
+    <h1 class="page-title">project/error.js</h1>
     
 
     
@@ -37,85 +37,31 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const AbstractIssue = require('../abstract/issue')
+            <pre class="prettyprint source linenums"><code>const chalk = require('chalk')
+const AbstractIssue = require('../abstract/issue')
 
 /**
- * Different types of dependecy issues that can be defined.
- *
- * @constant
- * @type {Object}
- * @default
+ * Reports an error in the program, not related with the code itself but with
+ * the analysis.
  */
-const DependencyType = {
-  DEP: Symbol('Dependency'),
-  DEV: Symbol('Dev-dependency'),
-  MIS: Symbol('Missing')
-}
-
-/**
- * Reports an issue regarding the depencies:
- *
- * - Unused `dependecies`.
- * - Unused `devDependencies`.
- * - Modules in `node_modules` not reported in the `package.json`.
- */
-class DependencyIssue extends AbstractIssue {
+class ErrorIssue extends AbstractIssue {
   /**
    * @constructor
-   * @param {Symbol} depType - Type of dependecy issue.
-   * @param {string} name - Name of the dependency.
-   * @throws Error - If `depType` is not a valid dependency type.
+   * @param {string} path - Path to the place where the error happened.
+   * @param {string} error - Problem found.
    */
-  constructor (depType, name) {
-    super(AbstractIssue.DEPENDENCY)
-
-    if (!Object.values(DependencyType).includes(depType)) {
-      throw new Error(`The type ${depType} is not a valid type.`)
-    }
-
-    this._depType = depType
-    this._name = name
+  constructor (path, error) {
+    super(AbstractIssue.ERROR)
+    this._error = error
+    this._path = path
   }
 
   toString () {
-    let msg
-    if (this._depType === DependencyType.DEP) {
-      msg = `The dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.DEV) {
-      msg = `The dev-dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.MIS) {
-      msg = `The package ${this._name} has been found in the node_modules but ` +
-            `it is not in the package.json`
-    }
-    return msg
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Dependency constant.
-   */
-  static get DEP () {
-    return DependencyType.DEP
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Dev-dependency constant.
-   */
-  static get DEV () {
-    return DependencyType.DEV
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Missing dependency constant.
-   */
-  static get MIS () {
-    return DependencyType.MIS
+    return chalk.red(`Error found at ${this._path}: ${this._error}`)
   }
 }
 
-module.exports = DependencyIssue
+module.exports = ErrorIssue
 </code></pre>
         </article>
     </section>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Project - Documentation</title>
+    <title>ModulesAnalyser - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">Project</h1>
+    <h1 class="page-title">ModulesAnalyser</h1>
     
 
     
@@ -40,11 +40,13 @@
 <header>
     
         <h2>
-        Project
+        ModulesAnalyser
         </h2>
         
-            <div class="class-description"><p>The Project class acts as a monad and holds all the different analysers to
-apply to the project.</p></div>
+            <div class="class-description"><p>Analyses the modules of the project, looking for modules that have been
+declared but never imported, modules that are imported but they are missing
+and files that import modules but do not export anything else (named as
+script for convenience).</p></div>
         
     
 </header>
@@ -58,7 +60,7 @@ apply to the project.</p></div>
     <h2>Constructor</h2>
     
 
-    <h4 class="name" id="Project"><span class="type-signature"></span>new Project<span class="signature">(config, logger)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="ModulesAnalyser"><span class="type-signature"></span>new ModulesAnalyser<span class="signature">(config, files)</span><span class="type-signature"></span></h4>
 
     
 
@@ -70,7 +72,7 @@ apply to the project.</p></div>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="project_project.js.html">project/project.js</a>, <a href="project_project.js.html#line13">line 13</a>
+        <a href="modules_analyser.js.html">modules/analyser.js</a>, <a href="modules_analyser.js.html#line17">line 17</a>
     </li></ul></dd>
     
 
@@ -108,10 +110,6 @@ apply to the project.</p></div>
 
 
 
-
-<div class="description">
-    <p>Creates a Project instance</p>
-</div>
 
 
 
@@ -164,20 +162,20 @@ apply to the project.</p></div>
 
             
 
-            <td class="description last"><p>Configuration of the project from the CLI.</p></td>
+            <td class="description last"><p>Project configuration.</p></td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>logger</code></td>
+                <td class="name"><code>files</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="Logger.html">Logger</a></span>
+<span class="param-type">array</span>
 
 
             
@@ -187,7 +185,8 @@ apply to the project.</p></div>
 
             
 
-            <td class="description last"><p>Logger where the analysers report their findings.</p></td>
+            <td class="description last"><p>Array containing the list of file paths of the
+project.</p></td>
         </tr>
 
     
@@ -232,7 +231,7 @@ apply to the project.</p></div>
 
     
 
-    <h4 class="name" id=".isValidPath"><span class="type-signature">(static) </span>isValidPath<span class="signature">(p)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    <h4 class="name" id="analyse"><span class="type-signature"></span>analyse<span class="signature">(logger)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -244,7 +243,7 @@ apply to the project.</p></div>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="project_project.js.html">project/project.js</a>, <a href="project_project.js.html#line103">line 103</a>
+        <a href="modules_analyser.js.html">modules/analyser.js</a>, <a href="modules_analyser.js.html#line39">line 39</a>
     </li></ul></dd>
     
 
@@ -284,8 +283,7 @@ apply to the project.</p></div>
 
 
 <div class="description">
-    <p>Checks if the given path is a valid project path. To be valid, it needs to
-point to a folder which contains a valid package.json file.</p>
+    <p>Executes the analyser and reports the findings to the logger.</p>
 </div>
 
 
@@ -323,13 +321,13 @@ point to a folder which contains a valid package.json file.</p>
 
         <tr>
             
-                <td class="name"><code>p</code></td>
+                <td class="name"><code>logger</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">string</span>
+<span class="param-type"><a href="Logger.html">Logger</a></span>
 
 
             
@@ -339,244 +337,7 @@ point to a folder which contains a valid package.json file.</p>
 
             
 
-            <td class="description last"><p>Path to the project.</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-
-
-<dl class="param-type">
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Object</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="_files"><span class="type-signature"></span>_files<span class="signature">()</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="project_project.js.html">project/project.js</a>, <a href="project_project.js.html#line65">line 65</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Extracts all the file paths from the project. Valid files depend on the
-configuration. <code>node_modules</code> are always ignored.</p>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="analyse"><span class="type-signature"></span>analyse<span class="signature">(analyser)</span><span class="type-signature"> &rarr; {<a href="Project.html">Project</a>}</span></h4>
-
-    
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="project_project.js.html">project/project.js</a>, <a href="project_project.js.html#line35">line 35</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Attaches the analyser to the project. It will report its findings to the
-logger.</p>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>analyser</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Analyser</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Analyser to attach.</p></td>
+            <td class="description last"><p>Logger to report the findings.</p></td>
         </tr>
 
     
@@ -600,9 +361,8 @@ logger.</p>
 
         
 <div class="param-desc">
-    <ul>
-<li>The objects itself to allow method chaining.</li>
-</ul>
+    <p>Promise holding the results. These results are also
+logged in the logger.</p>
 </div>
 
 
@@ -613,98 +373,13 @@ logger.</p>
     </dt>
     <dd>
         
-<span class="param-type"><a href="Project.html">Project</a></span>
+<span class="param-type">Promise</span>
 
 
     </dd>
 </dl>
 
     
-
-
-        
-            
-
-    
-
-    <h4 class="name" id="execute"><span class="type-signature"></span>execute<span class="signature">()</span><span class="type-signature"></span></h4>
-
-    
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="project_project.js.html">project/project.js</a>, <a href="project_project.js.html#line44">line 44</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Executes all the registered analysers and display the results in the
-screen.</p>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         

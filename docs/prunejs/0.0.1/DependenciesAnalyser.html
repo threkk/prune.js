@@ -22,7 +22,7 @@
 <label for="nav-trigger" class="overlay"></label>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AbstractAnalyser.html">AbstractAnalyser</a></li><li><a href="AbstractIssue.html">AbstractIssue</a></li><li><a href="DependenciesAnalyser.html">DependenciesAnalyser</a><ul class='methods'><li data-type='method'><a href="DependenciesAnalyser.html#analyse">analyse</a></li></ul></li><li><a href="DependencyIssue.html">DependencyIssue</a></li><li><a href="Logger.html">Logger</a><ul class='methods'><li data-type='method'><a href="Logger.html#report">report</a></li></ul></li><li><a href="Project.html">Project</a><ul class='methods'><li data-type='method'><a href="Project.html#.isValidPath">isValidPath</a></li><li data-type='method'><a href="Project.html#_displayDependencies">_displayDependencies</a></li><li data-type='method'><a href="Project.html#analyse">analyse</a></li><li data-type='method'><a href="Project.html#execute">execute</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#DependencyType">DependencyType</a></li><li><a href="global.html#Type">Type</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AbstractAnalyser.html">AbstractAnalyser</a></li><li><a href="AbstractIssue.html">AbstractIssue</a></li><li><a href="AST.html">AST</a></li><li><a href="Config.html">Config</a></li><li><a href="DependenciesAnalyser.html">DependenciesAnalyser</a><ul class='methods'><li data-type='method'><a href="DependenciesAnalyser.html#analyse">analyse</a></li></ul></li><li><a href="DependencyIssue.html">DependencyIssue</a></li><li><a href="ErrorIssue.html">ErrorIssue</a></li><li><a href="Logger.html">Logger</a><ul class='methods'><li data-type='method'><a href="Logger.html#displayCode">displayCode</a></li><li data-type='method'><a href="Logger.html#displayDependencies">displayDependencies</a></li><li data-type='method'><a href="Logger.html#displayErrors">displayErrors</a></li><li data-type='method'><a href="Logger.html#displayModules">displayModules</a></li><li data-type='method'><a href="Logger.html#report">report</a></li></ul></li><li><a href="Module.html">Module</a><ul class='methods'><li data-type='method'><a href="Module.html#._extractPath">_extractPath</a></li><li data-type='method'><a href="Module.html#._importParser">_importParser</a></li><li data-type='method'><a href="Module.html#.create">create</a></li></ul></li><li><a href="ModuleIssue.html">ModuleIssue</a></li><li><a href="ModulesAnalyser.html">ModulesAnalyser</a><ul class='methods'><li data-type='method'><a href="ModulesAnalyser.html#analyse">analyse</a></li></ul></li><li><a href="Project.html">Project</a><ul class='methods'><li data-type='method'><a href="Project.html#.isValidPath">isValidPath</a></li><li data-type='method'><a href="Project.html#_files">_files</a></li><li data-type='method'><a href="Project.html#analyse">analyse</a></li><li data-type='method'><a href="Project.html#execute">execute</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#DependencyType">DependencyType</a></li><li><a href="global.html#ModuleCase">ModuleCase</a></li><li><a href="global.html#Type">Type</a></li></ul>
 </nav>
 
 <div id="main">
@@ -60,7 +60,7 @@ folder looking for packages installed that are not in the <code>package.json</co
     <h2>Constructor</h2>
     
 
-    <h4 class="name" id="DependenciesAnalyser"><span class="type-signature"></span>new DependenciesAnalyser<span class="signature">(ignoreDirs, es7, jsx)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="DependenciesAnalyser"><span class="type-signature"></span>new DependenciesAnalyser<span class="signature">(config)</span><span class="type-signature"></span></h4>
 
     
 
@@ -72,7 +72,7 @@ folder looking for packages installed that are not in the <code>package.json</co
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="dependencies_analyser.js.html">dependencies/analyser.js</a>, <a href="dependencies_analyser.js.html#line13">line 13</a>
+        <a href="dependencies_analyser.js.html">dependencies/analyser.js</a>, <a href="dependencies_analyser.js.html#line12">line 12</a>
     </li></ul></dd>
     
 
@@ -136,8 +136,6 @@ folder looking for packages installed that are not in the <code>package.json</co
         
 
         
-        <th>Default</th>
-        
 
         <th class="last">Description</th>
     </tr>
@@ -148,13 +146,13 @@ folder looking for packages installed that are not in the <code>package.json</co
 
         <tr>
             
-                <td class="name"><code>ignoreDirs</code></td>
+                <td class="name"><code>config</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">array</span>
+<span class="param-type"><a href="Config.html">Config</a></span>
 
 
             
@@ -163,71 +161,8 @@ folder looking for packages installed that are not in the <code>package.json</co
             
 
             
-                <td class="default">
-                
-                </td>
-            
 
-            <td class="description last"><p>Array containing the routes of the directories
-to ignore by the analysers.</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>es7</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    <code>false</code>
-                
-                </td>
-            
-
-            <td class="description last"><p>Enables ES7 support.</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>jsx</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    <code>false</code>
-                
-                </td>
-            
-
-            <td class="description last"><p>Enables JSX support.</p></td>
+            <td class="description last"><p>Project configuration.</p></td>
         </tr>
 
     
@@ -272,7 +207,7 @@ to ignore by the analysers.</p></td>
 
     
 
-    <h4 class="name" id="analyse"><span class="type-signature"></span>analyse<span class="signature">(path, logger)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    <h4 class="name" id="analyse"><span class="type-signature"></span>analyse<span class="signature">(logger)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -284,7 +219,7 @@ to ignore by the analysers.</p></td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="dependencies_analyser.js.html">dependencies/analyser.js</a>, <a href="dependencies_analyser.js.html#line55">line 55</a>
+        <a href="dependencies_analyser.js.html">dependencies/analyser.js</a>, <a href="dependencies_analyser.js.html#line52">line 52</a>
     </li></ul></dd>
     
 
@@ -358,29 +293,6 @@ to ignore by the analysers.</p></td>
     </thead>
 
     <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>path</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Path to the project.</p></td>
-        </tr>
-
     
 
         <tr>
@@ -464,7 +376,7 @@ logged in the Logger.</p>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Thu May 04 2017 00:54:44 GMT+0200 (CEST) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Mon May 29 2017 09:35:35 GMT+0200 (CEST) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

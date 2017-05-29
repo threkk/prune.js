@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>dependencies/issue.js - Documentation</title>
+    <title>abstract/issue.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">dependencies/issue.js</h1>
+    <h1 class="page-title">abstract/issue.js</h1>
     
 
     
@@ -37,85 +37,71 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const AbstractIssue = require('../abstract/issue')
-
-/**
- * Different types of dependecy issues that can be defined.
+            <pre class="prettyprint source linenums"><code>/**
+ * Different types of reports that can be defined.
  *
  * @constant
  * @type {Object}
  * @default
  */
-const DependencyType = {
-  DEP: Symbol('Dependency'),
-  DEV: Symbol('Dev-dependency'),
-  MIS: Symbol('Missing')
+const Type = {
+  DEPENDENCY: Symbol('DEPENDENCY'),
+  ERROR: Symbol('ERROR'),
+  MODULE: Symbol('MODULE'),
+  CODE: Symbol('CODE')
 }
 
 /**
- * Reports an issue regarding the depencies:
+ * Parent abstract class.
  *
- * - Unused `dependecies`.
- * - Unused `devDependencies`.
- * - Modules in `node_modules` not reported in the `package.json`.
+ * @abstract
  */
-class DependencyIssue extends AbstractIssue {
+class AbstractIssue {
   /**
    * @constructor
-   * @param {Symbol} depType - Type of dependecy issue.
-   * @param {string} name - Name of the dependency.
-   * @throws Error - If `depType` is not a valid dependency type.
+   * @param {Symbol} type - Type of report created.
    */
-  constructor (depType, name) {
-    super(AbstractIssue.DEPENDENCY)
-
-    if (!Object.values(DependencyType).includes(depType)) {
-      throw new Error(`The type ${depType} is not a valid type.`)
+  constructor (type) {
+    if (new.target === AbstractIssue) {
+      throw TypeError('new of abstract class AbstractIssue')
     }
 
-    this._depType = depType
-    this._name = name
-  }
-
-  toString () {
-    let msg
-    if (this._depType === DependencyType.DEP) {
-      msg = `The dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.DEV) {
-      msg = `The dev-dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.MIS) {
-      msg = `The package ${this._name} has been found in the node_modules but ` +
-            `it is not in the package.json`
-    }
-    return msg
+    this.type = type
   }
 
   /**
    * @constant
    * @return {Symbol} Dependency constant.
    */
-  static get DEP () {
-    return DependencyType.DEP
+  static get DEPENDENCY () {
+    return Type.DEPENDENCY
   }
 
   /**
    * @constant
-   * @return {Symbol} Dev-dependency constant.
+   * @return {Symbol} Error constant.
    */
-  static get DEV () {
-    return DependencyType.DEV
+  static get ERROR () {
+    return Type.ERROR
   }
 
   /**
    * @constant
-   * @return {Symbol} Missing dependency constant.
+   * @return {Symbol} Module constant.
    */
-  static get MIS () {
-    return DependencyType.MIS
+  static get MODULE () {
+    return Type.MODULE
+  }
+
+  /**
+   * @constant
+   * @return {Symbol} Code constant.
+   */
+  static get CODE () {
+    return Type.CODE
   }
 }
-
-module.exports = DependencyIssue
+module.exports = AbstractIssue
 </code></pre>
         </article>
     </section>

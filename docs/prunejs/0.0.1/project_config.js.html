@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>dependencies/issue.js - Documentation</title>
+    <title>project/config.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">dependencies/issue.js</h1>
+    <h1 class="page-title">project/config.js</h1>
     
 
     
@@ -37,85 +37,68 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const AbstractIssue = require('../abstract/issue')
+            <pre class="prettyprint source linenums"><code>const { resolve } = require('path')
 
 /**
- * Different types of dependecy issues that can be defined.
- *
- * @constant
- * @type {Object}
- * @default
+ * Contains the configuration of the project extracted from the CLI.
  */
-const DependencyType = {
-  DEP: Symbol('Dependency'),
-  DEV: Symbol('Dev-dependency'),
-  MIS: Symbol('Missing')
-}
-
-/**
- * Reports an issue regarding the depencies:
- *
- * - Unused `dependecies`.
- * - Unused `devDependencies`.
- * - Modules in `node_modules` not reported in the `package.json`.
- */
-class DependencyIssue extends AbstractIssue {
+class Config {
   /**
    * @constructor
-   * @param {Symbol} depType - Type of dependecy issue.
-   * @param {string} name - Name of the dependency.
-   * @throws Error - If `depType` is not a valid dependency type.
+   * @param {string} path - Path to the root of the project, '.' by default.
    */
-  constructor (depType, name) {
-    super(AbstractIssue.DEPENDENCY)
+  constructor (path = '.') {
+    this._path = resolve(path)
+    this._ignoreDirs = [resolve(this._path, './node_modules')]
+    this._withES7 = false
+    this._withJSX = false
+  }
 
-    if (!Object.values(DependencyType).includes(depType)) {
-      throw new Error(`The type ${depType} is not a valid type.`)
+  /** @return {string} Path to the root of the project. */
+  get path () {
+    return this._path
+  }
+
+  /** @return {array} Array of paths of directories to ignore. */
+  get ignoreDirs () {
+    return this._ignoreDirs
+  }
+
+  /** @return {boolean} If the project uses ES7 features or not. */
+  get withES7 () {
+    return this._withES7
+  }
+
+  /** @return {boolean} If the project supports `JSX` syntax or not. */
+  get withJSX () {
+    return this._withJSX
+  }
+
+  /** @param {string} val - Path to the project root. */
+  set path (val) {
+    this._path = val
+  }
+
+  /** @param {string} val - Path to add the ignore list. */
+  set ignoreDirs (val) {
+    const file = resolve(this._path, val)
+    if (!this._ignoreDirs.includes(file)) {
+      this._ignoreDirs.push(file)
     }
-
-    this._depType = depType
-    this._name = name
   }
 
-  toString () {
-    let msg
-    if (this._depType === DependencyType.DEP) {
-      msg = `The dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.DEV) {
-      msg = `The dev-dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.MIS) {
-      msg = `The package ${this._name} has been found in the node_modules but ` +
-            `it is not in the package.json`
-    }
-    return msg
+  /** @param {boolean} val - If the project uses ES7 features or not. */
+  set withES7 (val) {
+    this._withES7 = Boolean(val)
   }
 
-  /**
-   * @constant
-   * @return {Symbol} Dependency constant.
-   */
-  static get DEP () {
-    return DependencyType.DEP
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Dev-dependency constant.
-   */
-  static get DEV () {
-    return DependencyType.DEV
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Missing dependency constant.
-   */
-  static get MIS () {
-    return DependencyType.MIS
+  /** @return {boolean} If the project supports `JSX` syntax or not. */
+  set withJSX (val) {
+    this._withJSX = Boolean(val)
   }
 }
 
-module.exports = DependencyIssue
+module.exports = Config
 </code></pre>
         </article>
     </section>

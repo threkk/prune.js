@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Global - Documentation</title>
+    <title>AST - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">Global</h1>
+    <h1 class="page-title">AST</h1>
     
 
     
@@ -40,8 +40,10 @@
 <header>
     
         <h2>
-        
+        AST
         </h2>
+        
+            <div class="class-description"><p>Generates an AST of the given JavaScript file using the Babel compiler.</p></div>
         
     
 </header>
@@ -51,8 +53,24 @@
     
         
 
+    
+    <h2>Constructor</h2>
+    
+
+    <h4 class="name" id="AST"><span class="type-signature"></span>new AST<span class="signature">(path, es7, jsx)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
 <dl class="details">
 
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="project_ast.js.html">project/ast.js</a>, <a href="project_ast.js.html#line7">line 7</a>
+    </li></ul></dd>
     
 
     
@@ -89,9 +107,144 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
         
 
         
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>path</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>Path to the file.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>es7</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    <code>false</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>If the parser should enable <code>ES7</code> features.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>jsx</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    <code>false</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>If the parser should enable <code>JSX</code>.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     </div>
 
@@ -110,7 +263,7 @@
 
         
             
-<h4 class="name" id="DependencyType"><span class="type-signature">(constant) </span>DependencyType<span class="type-signature"> :Object</span></h4>
+<h4 class="name" id="ast"><span class="type-signature"></span>ast<span class="type-signature"></span></h4>
 
 
 
@@ -121,7 +274,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="dependencies_issue.js.html">dependencies/issue.js</a>, <a href="dependencies_issue.js.html#line10">line 10</a>
+        <a href="project_ast.js.html">project/ast.js</a>, <a href="project_ast.js.html#line31">line 31</a>
     </li></ul></dd>
     
 
@@ -148,15 +301,6 @@
     
 
     
-    <dt class="tag-default">Default Value:</dt>
-    <dd class="tag-default"><ul class="dummy">
-            <li class="object-value"><pre class="prettyprint"><code>{
-  "DEP": "",
-  "DEV": "",
-  "MIS": ""
-}</code></pre></li>
-        </ul></dd>
-    
 
     
 
@@ -169,21 +313,7 @@
 
 
 
-<div class="description">
-    <p>Different types of dependecy issues that can be defined.</p>
-</div>
 
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">Object</span>
-
-
-        </li>
-    </ul>
 
 
 
@@ -192,7 +322,7 @@
 
         
             
-<h4 class="name" id="ModuleCase"><span class="type-signature">(constant) </span>ModuleCase<span class="type-signature"> :Object</span></h4>
+<h4 class="name" id="path"><span class="type-signature"></span>path<span class="type-signature"></span></h4>
 
 
 
@@ -203,7 +333,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="modules_issue.js.html">modules/issue.js</a>, <a href="modules_issue.js.html#line10">line 10</a>
+        <a href="project_ast.js.html">project/ast.js</a>, <a href="project_ast.js.html#line36">line 36</a>
     </li></ul></dd>
     
 
@@ -230,15 +360,6 @@
     
 
     
-    <dt class="tag-default">Default Value:</dt>
-    <dd class="tag-default"><ul class="dummy">
-            <li class="object-value"><pre class="prettyprint"><code>{
-  "UNUSED": "",
-  "SCRIPT": "",
-  "MISSING": ""
-}</code></pre></li>
-        </ul></dd>
-    
 
     
 
@@ -251,104 +372,7 @@
 
 
 
-<div class="description">
-    <p>Different types of module issues that can be defined.</p>
-</div>
 
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">Object</span>
-
-
-        </li>
-    </ul>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="Type"><span class="type-signature">(constant) </span>Type<span class="type-signature"> :Object</span></h4>
-
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="abstract_issue.js.html">abstract/issue.js</a>, <a href="abstract_issue.js.html#line8">line 8</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-default">Default Value:</dt>
-    <dd class="tag-default"><ul class="dummy">
-            <li class="object-value"><pre class="prettyprint"><code>{
-  "DEPENDENCY": "",
-  "ERROR": "",
-  "MODULE": "",
-  "CODE": ""
-}</code></pre></li>
-        </ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Different types of reports that can be defined.</p>
-</div>
-
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">Object</span>
-
-
-        </li>
-    </ul>
 
 
 

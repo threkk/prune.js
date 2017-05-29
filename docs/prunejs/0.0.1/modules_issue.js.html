@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>dependencies/issue.js - Documentation</title>
+    <title>modules/issue.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">dependencies/issue.js</h1>
+    <h1 class="page-title">modules/issue.js</h1>
     
 
     
@@ -40,82 +40,84 @@
             <pre class="prettyprint source linenums"><code>const AbstractIssue = require('../abstract/issue')
 
 /**
- * Different types of dependecy issues that can be defined.
+ * Different types of module issues that can be defined.
  *
  * @constant
  * @type {Object}
  * @default
  */
-const DependencyType = {
-  DEP: Symbol('Dependency'),
-  DEV: Symbol('Dev-dependency'),
-  MIS: Symbol('Missing')
+const ModuleCase = {
+  UNUSED: Symbol('Unused'),
+  SCRIPT: Symbol('Script'),
+  MISSING: Symbol('Missing')
 }
 
 /**
- * Reports an issue regarding the depencies:
+ * Reports an issue regarding the modules:
  *
- * - Unused `dependecies`.
- * - Unused `devDependencies`.
- * - Modules in `node_modules` not reported in the `package.json`.
+ * - Unused modules (exported but not imported).
+ * - Missing modules (imported but not exported).
+ * - Scripts (modules which import other modules but do not export anything).
  */
-class DependencyIssue extends AbstractIssue {
+class ModuleIssue extends AbstractIssue {
   /**
    * @constructor
-   * @param {Symbol} depType - Type of dependecy issue.
-   * @param {string} name - Name of the dependency.
-   * @throws Error - If `depType` is not a valid dependency type.
+   * @param {Symbol} modType - Case of module we are facing.
+   * @param {string} path - Path to the module.
+   * @throws Error - If `modCase` is not a valid module case.
    */
-  constructor (depType, name) {
-    super(AbstractIssue.DEPENDENCY)
+  constructor (modCase, path) {
+    super(AbstractIssue.MODULE)
 
-    if (!Object.values(DependencyType).includes(depType)) {
-      throw new Error(`The type ${depType} is not a valid type.`)
+    if (!Object.values(ModuleCase).includes(modCase)) {
+      throw Error(`The type ${modCase} is not a valid type.`)
     }
 
-    this._depType = depType
-    this._name = name
+    this._modCase = modCase
+    this._path = path
   }
 
   toString () {
-    let msg
-    if (this._depType === DependencyType.DEP) {
-      msg = `The dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.DEV) {
-      msg = `The dev-dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.MIS) {
-      msg = `The package ${this._name} has been found in the node_modules but ` +
-            `it is not in the package.json`
+    switch (this._modCase) {
+      case ModuleCase.UNUSED:
+        return `The module ${this._path} is unused: It has been exported but ` +
+          `never imported.`
+      case ModuleCase.SCRIPT:
+        return `The module ${this._path} has been marked as a script: it uses ` +
+          `other modules but it is not exported. Maybe you want to check if ` +
+          `it is still relevant.`
+      case ModuleCase.MISSING:
+        return `The module ${this._path} has been imported by other modules ` +
+          `it could not be found in the project.`
     }
-    return msg
   }
 
   /**
    * @constant
-   * @return {Symbol} Dependency constant.
+   * @return {Symbol} Unused module constant.
    */
-  static get DEP () {
-    return DependencyType.DEP
+  static get UNUSED () {
+    return ModuleCase.UNUSED
   }
 
   /**
    * @constant
-   * @return {Symbol} Dev-dependency constant.
+   * @return {Symbol} Script module constant.
    */
-  static get DEV () {
-    return DependencyType.DEV
+  static get SCRIPT () {
+    return ModuleCase.SCRIPT
   }
 
   /**
    * @constant
-   * @return {Symbol} Missing dependency constant.
+   * @return {Symbol} Missing module constant.
    */
-  static get MIS () {
-    return DependencyType.MIS
+  static get MISSING () {
+    return ModuleCase.MISSING
   }
 }
 
-module.exports = DependencyIssue
+module.exports = ModuleIssue
 </code></pre>
         </article>
     </section>

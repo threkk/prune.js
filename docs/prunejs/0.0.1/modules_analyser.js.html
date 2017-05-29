@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>dependencies/analyser.js - Documentation</title>
+    <title>modules/analyser.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">dependencies/analyser.js</h1>
+    <h1 class="page-title">modules/analyser.js</h1>
     
 
     
@@ -37,48 +37,35 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const depcheck = require('depcheck')
+            <pre class="prettyprint source linenums"><code>const _ = require('underscore')
+const nPath = require('path')
 
 const AbstractAnalyser = require('../abstract/analyser')
-const DependencyIssue = require('./issue')
+const ErrorIssue = require('../project/error')
+const Module = require('./module')
+const ModuleIssue = require('./issue')
+
+const pkg = require('../../package.json')
 
 /**
- * Analyses the dependecies of the project looking for issues regarding the
- * usage of them. It targets the depences stored in the sections `dependencies`
- * and `devDependencies` of the `package.json`. It also scans the `node_modules`
- * folder looking for packages installed that are not in the `package.json`.
+ * Analyses the modules of the project, looking for modules that have been
+ * declared but never imported, modules that are imported but they are missing
+ * and files that import modules but do not export anything else (named as
+ * script for convenience).
  */
-class DependenciesAnalyser extends AbstractAnalyser {
+class ModulesAnalyser extends AbstractAnalyser {
   /**
    * @constructor
    * @param {Config} config - Project configuration.
+   * @param {array} files - Array containing the list of file paths of the
+   * project.
    */
   constructor (config, files) {
     super()
-
-    const parsers = {
-      '*.js': depcheck.parser.es6
-    }
-
-    if (config.withES7) {
-      parsers['*.js'] = depcheck.parser.es7
-    }
-
-    if (config.withJSX) {
-      parsers['*.jsx'] = depcheck.parser.jsx
-    }
-
-    this._path = config.path
-    this._config = {
-      ignoreDirs: config.ignoreDirs,
-      parsers,
-      detectors: [
-        depcheck.detector.gruntLoadTaskCallExpression, // Not default.
-        depcheck.detector.importDeclaration,
-        depcheck.detector.requireCallExpression,
-        depcheck.detector.requireResolveCallExpression // Not default.
-      ]
-    }
+    this._files = files
+    this._root = config.path
+    this._withES7 = config.withES7
+    this._withJSX = config.withJSX
   }
 
   /**
@@ -86,29 +73,96 @@ class DependenciesAnalyser extends AbstractAnalyser {
    *
    * @param {Logger} logger - Logger to report the findings.
    * @return {Promise} Promise holding the results. These results are also
-   * logged in the Logger.
+   * logged in the logger.
    */
   analyse (logger) {
     return new Promise((resolve, reject) => {
-      depcheck(this._path, this._config, (unused) => {
-        const reports = [].concat(
-          unused.dependencies.map((dependency) =>
-            new DependencyIssue(DependencyIssue.DEP, dependency)),
-          unused.devDependencies.map((devDep) =>
-            new DependencyIssue(DependencyIssue.DEV, devDep)),
-          Object.values(unused.missing).map((missing) =>
-            new DependencyIssue(DependencyIssue.MIS, missing))
-        )
-        reports.forEach((report) => logger.report(report))
-        // Should we remove the body of this resolve? It has been stored already
-        // in the logger.
-        resolve(reports)
+      const modules = []
+
+      for (const filePath of this._files) {
+        try {
+          const module = Module.create(filePath, this._withES7, this._withJSX)
+
+          if (module != null) {
+            modules.push(module)
+          }
+        } catch (e) {
+          // Some error has been found by the parser and it is reported to the
+          // logger.
+          const error = new ErrorIssue(filePath, e)
+          logger.report(error)
+        }
+      }
+
+      const declaredModules = modules.map(module => module.filePath)
+      const exportedModules = []
+      let importedModules = new Set()
+
+      for (let module of modules) {
+        if (module.isExported) {
+          exportedModules.push(module.filePath)
+        }
+
+        for (let used of module.uses) {
+          importedModules.add(used)
+        }
+      }
+
+      importedModules = [...importedModules]
+
+      const unused = _.difference(exportedModules, importedModules)
+      const scripts = _.difference(declaredModules, exportedModules)
+      const missing = _.difference(importedModules, declaredModules)
+
+      const unusedIssues = unused.map(path => new ModuleIssue(ModuleIssue.UNUSED, path))
+      const missingIssues = missing.map((path) => {
+        const ext = nPath.extname(path)
+
+        if (ext === 'js' || ext === 'jsx') {
+          return new ModuleIssue(ModuleIssue.MISSING, path)
+        }
+
+        return null
+      }).filter(path => path != null)
+
+      // We want to avoid marking the defined scripts and the entry point of the
+      // project as files which do not export anything.
+      let main = null
+      if (pkg.main != null) {
+        main = nPath.resolve(this._root, pkg.main)
+      }
+
+      const binPaths = []
+      if (pkg.bin != null) {
+        for (let command in pkg.bin) {
+          if (pkg.bin[command] != null) {
+            binPaths.push(nPath.resolve(this._root, pkg.bin[command]))
+          }
+        }
+      }
+
+      const scriptIssues = scripts.map((path) => {
+        if (path === main) {
+          return null
+        }
+
+        if (binPaths.includes(path)) {
+          return null
+        }
+
+        return new ModuleIssue(ModuleIssue.SCRIPT, path)
       })
+      .filter((path) => path != null)
+
+      const allIssues = [].concat(unusedIssues, missingIssues, scriptIssues)
+      allIssues.forEach(issue => logger.report(issue))
+
+      resolve(allIssues)
     })
   }
 }
 
-module.exports = DependenciesAnalyser
+module.exports = ModulesAnalyser
 </code></pre>
         </article>
     </section>
