@@ -1,3 +1,4 @@
+const chalk = require('chalk')
 const fs = require('fs')
 const ora = require('ora')
 const path = require('path')
@@ -42,12 +43,26 @@ class Project {
    * screen.
    */
   execute () {
+    const check = chalk.green('✔')
+    const uncheck = chalk.red('✘')
+
+    console.log(`Starting ${chalk.bold('prunejs')} on ${this._config.path}`)
+    console.log('')
+    console.log(chalk.underline('Options:'))
+    console.log(`  ${this._config.withES7 ? check : uncheck} ES7`)
+    console.log(`  ${this._config.withJSX ? check : uncheck} JSX`)
+    console.log('')
+    console.log(`The following folders are ${chalk.bold('ignored')}:`)
+    this._config.ignoreDirs.forEach((dir) => console.log(`  - ${dir}`))
+    console.log('')
+
     const spinner = ora('Processing...').start()
     Promise.all(
       this._analysers.map((a) => a.analyse(this._logger))
     )
     .then(() => {
       spinner.succeed('Success!')
+      console.log('')
       this._logger.displayDependencies()
       this._logger.displayModules()
       this._logger.displayCode()

@@ -17,21 +17,32 @@ const config = new Config()
 // Initialise the logger.
 const logger = new Logger()
 
-function ignoreAcc (val, acc) {
-  acc.push(val)
-  return acc
-}
-
 // Sets the CLI.
 program
   .version(pkg.version)
   .description(pkg.description)
   .usage('[options] <path>')
-  .option('-i, --ignore [dir]', 'Excludes the selected folder. `node_modules` are always ignored.', ignoreAcc, [])
-  .option('-x, --jsx', 'Adds JSX syntax support.')
-  .option('-7, --es7', 'Adds ES7 support.')
-  .arguments('<path>')
-  .action((p) => {
+  .option('-i, --ignore', 'excludes the following folders. "node_modules" is always ignored.')
+  .option('-x, --jsx', 'adds JSX syntax support.')
+  .option('-7, --es7', 'adds ES7 support.')
+  // Hacking a bit the library. This turns the last argument into a variadic
+  // argument. That way we can use it to transform the option `ignore` into a
+  // list of ignored files (all but the last one) instead of
+  .arguments('<path...>')
+  .action((paths, options) => {
+    const p = paths.pop()
+
+    if (options.ignore) {
+      for (let dir of paths) {
+        config.ignoreDirs = dir
+      }
+    } else if (paths.length > 0) {
+      const error = new ErrorIssue(paths, 'Unsupported parameters found.')
+      logger.report(error)
+      logger.displayErrors()
+      exit(1)
+    }
+
     const isValid = Project.isValidPath(p)
     if (isValid.valid) {
       config.path = isValid.path
@@ -47,12 +58,6 @@ program
 // Extracts the configuration.
 if (program.es7) config.withES7 = true
 if (program.jsx) config.withJSX = true
-
-if (program.ignore.length > 0) {
-  for (let dir of program.ignore) {
-    config.ignoreDirs = dir
-  }
-}
 
 // Initalises the project.
 const project = new Project(config, logger)
