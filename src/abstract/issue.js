@@ -27,6 +27,10 @@ class AbstractIssue {
       throw TypeError('new of abstract class AbstractIssue')
     }
 
+    if (!Object.values(Type).includes(type)) {
+      throw TypeError('invalid type of AbstractIssue')
+    }
+
     this.type = type
   }
 

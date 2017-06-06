@@ -4,9 +4,8 @@
   "description": "Prune.js is a tool that helps you finding and deleting dead code.",
   "scripts": {
     "gen-docs": "node_modules/.bin/jsdoc -c jsdoc.json",
-    "mocha": "node_modules/.bin/mocha",
     "standard": "node_modules/.bin/standard 'src/**/*.js' 'test/**/*.js'",
-    "test": "npm run standard && npm run mocha"
+    "test": "npm run standard && mocha 'test/**/*.js'"
   },
   "repository": {
     "type": "git",
