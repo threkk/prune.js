@@ -151,9 +151,16 @@ function parse (node) {
     case 'StringLiteral':
     case 'BooleanLiteral':
     case 'NumericLiteral':
+    case 'Template Literals':
+    case 'TemplateLiteral':
+    case 'TaggedTemplateExpression':
+    case 'TemplateElement':
       return new Node([], { main: 'literal', sub: node.type }, node.loc, [], [], [])
     case 'Identifier':
-      return new Node([node.name], { main: 'identifier', sub: node.type }, node.loc, [], [], [])
+    case 'EmptyStatement':
+    case 'DebuggerStatement':
+    case 'WithStatement':
+      return require('./other')(node)
   }
 }
 

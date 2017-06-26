@@ -121,7 +121,10 @@ function parseExpression (node) {
       })
       break
     case 'DoExpression':
-      // TODO: Technically, this is a body like in a class or a function.
+      node.body.forEach((b) => {
+        const child = b
+        children.push(child)
+      })
       break
   }
 

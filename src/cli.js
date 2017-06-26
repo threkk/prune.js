@@ -8,8 +8,9 @@ const ErrorIssue = require('./project/error')
 const Logger = require('./project/logger')
 const Project = require('./project/project')
 
-const DependenciesAnalyser = require('./dependencies/analyser')
-const ModulesAnalyser = require('./modules/analyser')
+const CodeAnalyser = require('./code/analyser')
+// const DependenciesAnalyser = require('./dependencies/analyser')
+// const ModulesAnalyser = require('./modules/analyser')
 
 // Default configuration.
 const config = new Config()
@@ -63,6 +64,7 @@ if (program.jsx) config.withJSX = true
 const project = new Project(config, logger)
 
 project
-  .analyse(DependenciesAnalyser)
-  .analyse(ModulesAnalyser)
+  // .analyse(DependenciesAnalyser)
+  // .analyse(ModulesAnalyser)
+  .analyse(CodeAnalyser)
   .execute()
