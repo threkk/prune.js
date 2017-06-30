@@ -161,6 +161,22 @@ function parse (node) {
     case 'DebuggerStatement':
     case 'WithStatement':
       return require('./other')(node)
+    case 'ReturnStatement':
+    case 'LabeledStatement':
+    case 'BreakStatement':
+    case 'ContinueStatement':
+    case 'IfStatement':
+    case 'SwitchStatement':
+    case 'SwitchCase':
+    case 'ThrowStatement':
+    case 'TryStatement':
+    case 'CatchClause':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+    case 'ForStatement':
+    case 'ForInStatement':
+    case 'ForOfStatement':
+      return require('./flow')(node)
   }
 }
 

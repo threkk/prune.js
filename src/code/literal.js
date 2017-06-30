@@ -8,7 +8,7 @@ function parseLiteral (node) {
   }
   const loc = node.loc
   const declares = []
-  const uses = []
+  let uses = []
   const children = []
 
   switch (node.type) {
@@ -17,11 +17,28 @@ function parseLiteral (node) {
     case 'StringLiteral':
     case 'BooleanLiteral':
     case 'NumericLiteral':
+    case 'TemplateElement':
       break
     case 'TemplateLiteral':
+      node.quasis.forEach((q) => {
+        const quasi = parse(q).uses
+        uses = uses.concat(quasi)
+      })
+
+      node.expressions.forEach((expr) => {
+        const expression = parse(expr).uses
+        uses = uses.concat(expression)
+      })
+      break
     case 'TaggedTemplateExpression':
-    case 'TemplateElement':
-      // TODO: WTF!?
+      if (node.tag != null) {
+        uses = uses.concat(parse(node.tag).uses)
+      }
+
+      if (node.quasi != null) {
+        uses = uses.concat(parse(node.quasi).uses)
+      }
+      break
   }
   return new Node(id, type, loc, declares, uses, children)
 }
