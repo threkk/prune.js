@@ -24,8 +24,41 @@ function parse (node) {
     TemplateElement
   } = require('./literal')
 
+  const {
+    Super,
+    Import,
+    ThisExpression,
+    ArrowFunctionExpression,
+    YieldExpression,
+    AwaitExpression,
+    ArrayExpression,
+    ObjectExpression,
+    ObjectMember,
+    ObjectProperty,
+    ObjectMethod,
+    FunctionExpression,
+    UnaryExpression,
+    UnaryOperator,
+    UpdateExpression,
+    UpdateOperator,
+    BinaryExpression,
+    BinaryOperator,
+    AssignmentExpression,
+    AssignmentOperator,
+    LogicalExpression,
+    LogicalOperator,
+    SpreadElement,
+    MemberExpression,
+    BindExpression,
+    ConditionalExpression,
+    CallExpression,
+    NewExpression,
+    SequenceExpression,
+    DoExpression
+  } = require('./expression')
+
   switch (node.type) {
-    // class.js
+      // class.js
     case 'Class':
       return new Class(node)
     case 'ClassBody':
@@ -43,7 +76,7 @@ function parse (node) {
     case 'MetaProperty':
       return new MetaProperty(node)
 
-    // literal.js
+      // literal.js
     case 'Identifier':
       return new Identifier(node)
     case 'PrivateName':
@@ -66,6 +99,71 @@ function parse (node) {
       return new TaggedTemplateExpression(node)
     case 'TemplateElement':
       return new TemplateElement(node)
+
+      // expression.js
+    case 'Super':
+      return new Super(node)
+    case 'Import':
+      return new Import(node)
+    case 'ThisExpression':
+      return new ThisExpression(node)
+    case 'ArrowFunctionExpression':
+      return new ArrowFunctionExpression(node)
+    case 'YieldExpression':
+      return new YieldExpression(node)
+    case 'AwaitExpression':
+      return new AwaitExpression(node)
+    case 'ArrayExpression':
+      return new ArrayExpression(node)
+    case 'ObjectExpression':
+      return new ObjectExpression(node)
+    case 'ObjectMember':
+      return new ObjectMember(node)
+    case 'ObjectProperty':
+      return new ObjectProperty(node)
+    case 'ObjectMethod':
+      return new ObjectMethod(node)
+    case 'FunctionExpression':
+      return new FunctionExpression(node)
+    case 'UnaryExpression':
+      return new UnaryExpression(node)
+    case 'UnaryOperator':
+      return new UnaryOperator(node)
+    case 'UpdateExpression':
+      return new UpdateExpression(node)
+    case 'UpdateOperator':
+      return new UpdateOperator(node)
+    case 'BinaryExpression':
+      return new BinaryExpression(node)
+    case 'BinaryOperator':
+      return new BinaryOperator(node)
+    case 'AssignmentExpression':
+      return new AssignmentExpression(node)
+    case 'AssignmentOperator':
+      return new AssignmentOperator(node)
+    case 'LogicalExpression':
+      return new LogicalExpression(node)
+    case 'LogicalOperator':
+      return new LogicalOperator(node)
+    case 'SpreadElement':
+      return new SpreadElement(node)
+    case 'MemberExpression':
+      return new MemberExpression(node)
+    case 'BindExpression':
+      return new BindExpression(node)
+    case 'ConditionalExpression':
+      return new ConditionalExpression(node)
+    case 'CallExpression':
+      return new CallExpression(node)
+    case 'NewExpression':
+      return new NewExpression(node)
+    case 'SequenceExpression':
+      return new SequenceExpression(node)
+    case 'DoExpression':
+      return new DoExpression(node)
+
+    default:
+      throw TypeError(`Unknown node:  ${node}`)
   }
 }
 
