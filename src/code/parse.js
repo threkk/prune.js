@@ -1,4 +1,5 @@
 function parse (node) {
+  // Decorator, Directive and DirectiveLiteral are not covered.
   const {
     Class,
     ClassBody,
@@ -56,6 +57,17 @@ function parse (node) {
     SequenceExpression,
     DoExpression
   } = require('./expression')
+
+  const {
+    FunctionDeclaration,
+    VariableDeclaration,
+    VariableDeclarator,
+    AssignmentProperty,
+    ObjectPattern,
+    ArrayPattern,
+    RestElement,
+    AssignmentPattern
+  } = require('./declaration')
 
   switch (node.type) {
       // class.js
@@ -161,6 +173,24 @@ function parse (node) {
       return new SequenceExpression(node)
     case 'DoExpression':
       return new DoExpression(node)
+
+      // declaration.js
+    case 'FunctionDeclaration':
+      return new FunctionDeclaration(node)
+    case 'VariableDeclaration':
+      return new VariableDeclaration(node)
+    case 'VariableDeclarator':
+      return new VariableDeclarator(node)
+    case 'AssignmentProperty':
+      return new AssignmentProperty(node)
+    case 'ObjectPattern':
+      return new ObjectPattern(node)
+    case 'ArrayPattern':
+      return new ArrayPattern(node)
+    case 'RestElement':
+      return new RestElement(node)
+    case 'AssignmentPattern':
+      return new AssignmentPattern(node)
 
     default:
       throw TypeError(`Unknown node:  ${node}`)
