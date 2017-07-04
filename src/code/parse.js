@@ -69,6 +69,29 @@ function parse (node) {
     AssignmentPattern
   } = require('./declaration')
 
+  const {
+    ExpressionStatement,
+    BlockStatement,
+    EmptyStatement,
+    DebuggerStatement,
+    WithStatement,
+    ReturnStatement,
+    LabeledStatement,
+    BreakStatement,
+    ContinueStatement,
+    IfStatement,
+    SwitchStatement,
+    SwitchCase,
+    ThrowStatement,
+    TryStatement,
+    CatchClause,
+    WhileStatement,
+    DoWhileStatement,
+    ForStatement,
+    ForInStatement,
+    ForOfStatement
+  } = require('./statement')
+
   switch (node.type) {
       // class.js
     case 'Class':
@@ -191,6 +214,48 @@ function parse (node) {
       return new RestElement(node)
     case 'AssignmentPattern':
       return new AssignmentPattern(node)
+
+      // statement.js
+    case 'ExpressionStatement':
+      return new ExpressionStatement(node)
+    case 'BlockStatement':
+      return new BlockStatement(node)
+    case 'EmptyStatement':
+      return new EmptyStatement(node)
+    case 'DebuggerStatement':
+      return new DebuggerStatement(node)
+    case 'WithStatement':
+      return new WithStatement(node)
+    case 'ReturnStatement':
+      return new ReturnStatement(node)
+    case 'LabeledStatement':
+      return new LabeledStatement(node)
+    case 'BreakStatement':
+      return new BreakStatement(node)
+    case 'ContinueStatement':
+      return new ContinueStatement(node)
+    case 'IfStatement':
+      return new IfStatement(node)
+    case 'SwitchStatement':
+      return new SwitchStatement(node)
+    case 'SwitchCase':
+      return new SwitchCase(node)
+    case 'ThrowStatement':
+      return new ThrowStatement(node)
+    case 'TryStatement':
+      return new TryStatement(node)
+    case 'CatchClause':
+      return new CatchClause(node)
+    case 'WhileStatement':
+      return new WhileStatement(node)
+    case 'DoWhileStatement':
+      return new DoWhileStatement(node)
+    case 'ForStatement':
+      return new ForStatement(node)
+    case 'ForInStatement':
+      return new ForInStatement(node)
+    case 'ForOfStatement':
+      return new ForOfStatement(node)
 
     default:
       throw TypeError(`Unknown node:  ${node}`)
