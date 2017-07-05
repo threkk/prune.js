@@ -122,12 +122,26 @@ class ClassPrivateProperty extends AbstractNode {
  *      type: "ClassDeclaration";
  *      id: Identifier;
  *  }
+ *  interface Class <: Node {
+ *      id: Identifier | null;
+ *      superClass: Expression | null;
+ *      body: ClassBody;
+ *      decorators: [ Decorator ];
+ *  }
  */
 class ClassDeclaration extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const id = parse(node.id)
+    const body = parse(node.body)
 
+    if (node.superClass != null) {
+      const superClass = parse(node.superClass)
+      this.uses = superClass.returns
+    }
+
+    this.declares = body.declares
+    this.uses = body.uses
     this.returns = id.returns
   }
 }
@@ -136,10 +150,30 @@ class ClassDeclaration extends AbstractNode {
  *  interface ClassExpression <: Class, Expression {
  *      type: "ClassExpression";
  *  }
+ *  interface Class <: Node {
+ *      id: Identifier | null;
+ *      superClass: Expression | null;
+ *      body: ClassBody;
+ *      decorators: [ Decorator ];
+ *  }
  */
 class ClassExpression extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
+    const body = parse(node.body)
+
+    if (node.id != null) {
+      const id = parse(node.id)
+      this.returns = id.returns
+    }
+
+    if (node.superClass != null) {
+      const superClass = parse(node.superClass)
+      this.uses = superClass.returns
+    }
+
+    this.declares = body.declares
+    this.uses = body.uses
   }
 }
 

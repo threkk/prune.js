@@ -174,7 +174,26 @@ class ExportDefaultDeclaration extends AbstractNode {
  *      async: boolean;
  *  }
  */
-class OptFunctionDeclaration extends AbstractNode {}
+class OptFunctionDeclaration extends AbstractNode {
+  constructor (node) {
+    super(node.loc, node.type)
+
+    const params = node.params.map(p => parse(p))
+    const body = node.body
+
+    params.forEach(p => {
+      this.declares = p.returns
+    })
+
+    this.uses = body.uses
+    this.declares = body.declares
+
+    if (node.id != null) {
+      const id = parse(node.id)
+      this.returns = id.returns
+    }
+  }
+}
 
 /**
  *  interface OptClasDeclaration <: ClassDeclaration {
@@ -193,7 +212,25 @@ class OptFunctionDeclaration extends AbstractNode {}
  *      decorators: [ Decorator ];
  *  }
  */
-class OptClasDeclaration extends AbstractNode {}
+class OptClasDeclaration extends AbstractNode {
+  constructor (node) {
+    super(node.loc, node.type)
+    const body = parse(node.body)
+
+    if (node.id != null) {
+      const id = parse(node.id)
+      this.returns = id.returns
+    }
+
+    if (node.superClass != null) {
+      const superClass = parse(node.superClass)
+      this.uses = superClass.returns
+    }
+
+    this.declares = body.declares
+    this.uses = body.uses
+  }
+}
 
 /**
  *  interface ExportAllDeclaration <: ModuleDeclaration {
@@ -201,7 +238,15 @@ class OptClasDeclaration extends AbstractNode {}
  *      source: Literal;
  *  }
  */
-class ExportAllDeclaration extends AbstractNode {}
+class ExportAllDeclaration extends AbstractNode {
+  constructor (node) {
+    super(node.loc, node.type)
+    const source = parse(node.source)
+
+    this.uses = source.returns
+    this.uses = source.uses
+  }
+}
 
 module.exports = {
   ModuleDeclaration,

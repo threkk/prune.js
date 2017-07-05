@@ -92,6 +92,21 @@ function parse (node) {
     ForOfStatement
   } = require('./statement')
 
+  const {
+    ModuleDeclaration,
+    ModuleSpecifier,
+    ImportDeclaration,
+    ImportSpecifier,
+    ImportDefaultSpecifier,
+    ImportNamespaceSpecifier,
+    ExportNamedDeclaration,
+    ExportSpecifier,
+    ExportDefaultDeclaration,
+    OptFunctionDeclaration,
+    OptClassDeclaration,
+    ExportAllDeclaration
+  } = require('./module')
+
   switch (node.type) {
       // class.js
     case 'Class':
@@ -257,6 +272,31 @@ function parse (node) {
     case 'ForOfStatement':
       return new ForOfStatement(node)
 
+      // module.js
+    case 'ModuleDeclaration':
+      return new ModuleDeclaration(node)
+    case 'ModuleSpecifier':
+      return new ModuleSpecifier(node)
+    case 'ImportDeclaration':
+      return new ImportDeclaration(node)
+    case 'ImportSpecifier':
+      return new ImportSpecifier(node)
+    case 'ImportDefaultSpecifier':
+      return new ImportDefaultSpecifier(node)
+    case 'ImportNamespaceSpecifier':
+      return new ImportNamespaceSpecifier(node)
+    case 'ExportNamedDeclaration':
+      return new ExportNamedDeclaration(node)
+    case 'ExportSpecifier':
+      return new ExportSpecifier(node)
+    case 'ExportDefaultDeclaration':
+      return new ExportDefaultDeclaration(node)
+    case 'OptFunctionDeclaration':
+      return new OptFunctionDeclaration(node)
+    case 'OptClassDeclaration':
+      return new OptClassDeclaration(node)
+    case 'ExportAllDeclaration':
+      return new ExportAllDeclaration(node)
     default:
       throw TypeError(`Unknown node:  ${node}`)
   }
