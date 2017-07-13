@@ -1,5 +1,5 @@
 const AbstractNode = require('../abstract/node')
-const parse = require('./parse')
+const parse = require('./parser')
 
 /**
  *  interface Super <: Node {
@@ -53,6 +53,12 @@ class ArrowFunctionExpression extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
 
+    if (node.id != null) {
+      const id = parse(node.id)
+      this.uses = id.uses
+      this.returns = id.returns
+    }
+
     const params = node.params.map((p) => parse(p))
     const body = parse(node.body)
 
@@ -76,7 +82,6 @@ class YieldExpression extends AbstractNode {
       const argument = parse(node.argument)
 
       this.uses = argument.uses
-      this.uses = argument.returns
     }
   }
 }
@@ -94,7 +99,6 @@ class AwaitExpression extends AbstractNode {
       const argument = parse(node.argument)
 
       this.uses = argument.uses
-      this.uses = argument.returns
     }
   }
 }
@@ -111,7 +115,6 @@ class ArrayExpression extends AbstractNode {
     const elements = node.elements.map(e => parse(e))
 
     elements.forEach(e => { this.uses = e.uses })
-    elements.forEach(e => { this.returns = e.returns })
   }
 }
 
@@ -127,7 +130,6 @@ class ObjectExpression extends AbstractNode {
     const properties = node.properties.map(p => parse(p))
 
     properties.forEach(p => { this.uses = p.uses })
-    properties.forEach(p => { this.returns = p.returns })
   }
 }
 
@@ -143,7 +145,6 @@ class ObjectMember extends AbstractNode {
     super(node.loc, node.type)
     const key = parse(node.key)
 
-    this.uses = key.returns
     this.uses = key.uses
   }
 }
@@ -160,7 +161,6 @@ class ObjectProperty extends AbstractNode {
     super(node.loc, node.type)
     const value = parse(node.value)
 
-    this.uses = value.returns
     this.uses = value.uses
   }
 }
@@ -170,10 +170,36 @@ class ObjectProperty extends AbstractNode {
  *      type: "ObjectMethod";
  *      kind: "get" | "set" | "method";
  *  }
+ *  interface ObjectMember <: Node {
+ *      key: Expression;
+ *      computed: boolean;
+ *      decorators: [ Decorator ];
+ *  }
+ *  interface Function <: Node {
+ *      id: Identifier | null;
+ *      params: [ Pattern ];
+ *      body: BlockStatement;
+ *      generator: boolean;
+ *      async: boolean;
+ *  }
  */
 class ObjectMethod extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
+    const key = parse(node.key)
+    const body = parse(node.body)
+    const params = node.params.map((p) => parse(p))
+
+    if (node.id != null) {
+      const id = parse(node.id)
+      this.returns = id.returns
+      this.uses = id.uses
+    }
+
+    this.uses = key.uses
+    this.uses = body.uses
+    this.declares = body.declares
+    this.declares = params.map((p) => p.returns)
   }
 }
 
@@ -196,6 +222,12 @@ class FunctionExpression extends AbstractNode {
     const params = node.params.map((p) => parse(p))
     const body = parse(node.body)
 
+    if (node.id != null) {
+      const id = parse(node.id)
+      this.returns = id.returns
+      this.uses = id.uses
+    }
+
     this.uses = body.uses
     this.declares = body.declares
     this.declares = params.map((p) => p.returns)
@@ -216,7 +248,6 @@ class UnaryExpression extends AbstractNode {
     const argument = parse(node.argument)
 
     this.uses = argument.uses
-    this.uses = argument.returns
   }
 }
 
@@ -245,7 +276,6 @@ class UpdateExpression extends AbstractNode {
     const argument = parse(node.argument)
 
     this.uses = argument.uses
-    this.uses = argument.returns
   }
 }
 
@@ -275,9 +305,7 @@ class BinaryExpression extends AbstractNode {
     const right = parse(node.right)
 
     this.uses = left.uses
-    this.uses = left.returns
     this.uses = right.uses
-    this.uses = right.returns
   }
 }
 
@@ -314,7 +342,6 @@ class AssignmentExpression extends AbstractNode {
     this.returns = left.returns
     this.uses = left.uses
     this.uses = right.uses
-    this.uses = right.returns
   }
 }
 
@@ -346,9 +373,7 @@ class LogicalExpression extends AbstractNode {
     const right = parse(node.right)
 
     this.uses = left.uses
-    this.uses = left.returns
     this.uses = right.uses
-    this.uses = right.returns
   }
 }
 
@@ -373,9 +398,9 @@ class SpreadElement extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const argument = parse(node.argument)
-
+    // TODO: Review this.
+    console.log('SpreadElement', node)
     this.uses = argument.uses
-    this.uses = argument.returns
   }
 }
 
@@ -395,11 +420,8 @@ class MemberExpression extends AbstractNode {
     const property = parse(node.property)
 
     this.uses = object.uses
-    this.uses = object.return
-
     if (node.computed) {
       this.uses = property.uses
-      this.uses = property.return
     }
   }
 }
@@ -416,12 +438,10 @@ class BindExpression extends AbstractNode {
     super(node.loc, node.type)
     const callee = parse(node.callee)
     this.uses = callee.uses
-    this.uses = callee.returns
 
     if (node.object != null) {
       const object = parse(node.object)
       this.uses = object.uses
-      this.uses = object.returns
     }
   }
 }
@@ -442,11 +462,8 @@ class ConditionalExpression extends AbstractNode {
     const consequent = parse(node.consequent)
 
     this.uses = test.uses
-    this.uses = test.returns
     this.uses = alternate.uses
-    this.uses = alternate.returns
     this.uses = consequent.uses
-    this.uses = consequent.returns
   }
 }
 
@@ -461,15 +478,13 @@ class ConditionalExpression extends AbstractNode {
 class CallExpression extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
-    const callee = parse(node.calle)
+    const callee = parse(node.callee)
     const args = node.arguments.map(a => parse(a))
 
     this.uses = callee.uses
-    this.uses = callee.returns
 
     args.forEach((a) => {
       this.uses = a.uses
-      this.uses = a.return
     })
   }
 }
@@ -493,13 +508,12 @@ class NewExpression extends AbstractNode {
  *  }
  */
 class SequenceExpression extends AbstractNode {
-  consturctor (node) {
+  constructor (node) {
     super(node.loc, node.type)
     const expressions = node.expressions.map((e) => parse(e))
 
     expressions.forEach(e => {
       this.uses = e.uses
-      this.uses = e.returns
     })
   }
 }

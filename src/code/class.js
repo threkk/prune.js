@@ -1,5 +1,5 @@
 const AbstractNode = require('../abstract/node')
-const parse = require('./parse')
+const parse = require('./parser')
 
 /**
  *  interface Class <: Node {
@@ -21,10 +21,9 @@ class Class extends AbstractNode {
 
     if (node.superClass != null) {
       const superClass = parse(node.superClass)
-      this.uses = superClass.returns
+      this.uses = superClass.uses
     }
 
-    this.declares = body.declares
     this.uses = body.uses
   }
 }
@@ -41,7 +40,6 @@ class ClassBody extends AbstractNode {
 
     node.body.forEach((b) => {
       const body = parse(b)
-      this.declares = body.declares
       this.uses = body.uses
     })
   }
@@ -73,7 +71,6 @@ class ClassMethod extends AbstractNode {
 
     this.returns = key.returns
     this.uses = body.uses
-    this.declares = body.declares
     this.declares = params.map((p) => p.returns)
   }
 }
@@ -111,9 +108,9 @@ class ClassPrivateProperty extends AbstractNode {
     const key = parse(node.key)
     const value = parse(node.value)
 
-    this.declares = key.returns
+    this.returns = key.returns
+    this.uses = key.uses
     this.uses = value.uses
-    this.uses = value.returns
   }
 }
 
@@ -140,7 +137,6 @@ class ClassDeclaration extends AbstractNode {
       this.uses = superClass.returns
     }
 
-    this.declares = body.declares
     this.uses = body.uses
     this.returns = id.returns
   }
@@ -172,7 +168,6 @@ class ClassExpression extends AbstractNode {
       this.uses = superClass.returns
     }
 
-    this.declares = body.declares
     this.uses = body.uses
   }
 }
@@ -187,8 +182,6 @@ class ClassExpression extends AbstractNode {
 class MetaProperty extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
-    // WTF is a meta property???
-    console.log(node)
   }
 }
 

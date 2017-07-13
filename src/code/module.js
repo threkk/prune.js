@@ -1,5 +1,5 @@
 const AbstractNode = require('../abstract/node')
-const parse = require('./parse')
+const parse = require('./parser')
 
 /**
  *  interface ModuleDeclaration <: Node { }

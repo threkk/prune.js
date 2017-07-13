@@ -1,5 +1,5 @@
 const AbstractNode = require('../abstract/node')
-const parse = require('./parse')
+const parse = require('./parser')
 
 /**
  *  interface ExpressionStatement <: Statement {
@@ -74,7 +74,6 @@ class WithStatement extends AbstractNode {
     const body = parse(node.body)
 
     this.uses = object.uses
-    this.uses = object.returns
     this.uses = body.uses
     this.returns = body.returns
     this.declares = body.declares
@@ -94,7 +93,6 @@ class ReturnStatement extends AbstractNode {
       const argument = parse(node.argument)
 
       this.uses = argument.uses
-      this.uses = argument.returns
       this.returns = argument.returns
     }
   }
@@ -177,7 +175,8 @@ class IfStatement extends AbstractNode {
 
     if (node.alternate != null) {
       const alternate = parse(node.alternate)
-      this.declares = alternate.uses
+
+      this.declares = alternate.declares
       this.uses = alternate.uses
       this.returns = alternate.returns
     }
@@ -200,6 +199,7 @@ class SwitchStatement extends AbstractNode {
     this.uses = discriminant.uses
     cases.forEach((c) => {
       // TODO: Review this, does not look too alright.
+      this.declares = c.declares
       this.uses = c.uses
       this.returns = c.returns
     })
@@ -313,7 +313,6 @@ class WhileStatement extends AbstractNode {
     const body = parse(node.body)
 
     this.uses = test.uses
-    // TODO: Watch out here.
     this.declares = body.declares
     this.uses = body.uses
     this.returns = body.returns
@@ -334,7 +333,6 @@ class DoWhileStatement extends AbstractNode {
     const body = parse(node.body)
 
     this.uses = test.uses
-    // TODO: Watch out here.
     this.declares = body.declares
     this.uses = body.uses
     this.returns = body.returns

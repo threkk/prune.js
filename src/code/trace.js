@@ -1,4 +1,5 @@
 const AST = require('../project/ast')
+const parse = require('./parser')
 
 class Trace {
   constructor (filePath, astBody, exportNodes) {
@@ -17,11 +18,18 @@ class Trace {
       Array.isArray(ast.ast.program.body)
 
     if (isValidBody) {
-      const exportNodes = []
+      for (let node of ast.ast.program.body) {
+        /*
+        const element = parse(node)
+        if (typeof element === 'undefined') {
+          console.log(node)
+        }
 
-      for (let element of ast.ast.program.body) {
         switch (element.type) {
           case 'ExpressionStatement':
+            if (element.returns.length > 0) {
+              console.log(element)
+            }
             const isModuleExportExpr =
               element.expression.type === 'AssignmentExpression' &&
               element.expression.left.type === 'MemberExpression' &&
@@ -31,7 +39,7 @@ class Trace {
               element.expression.left.property.name === 'exports'
 
             if (isModuleExportExpr) {
-              exportNodes.push(element.expression.right)
+              // exportNodes.push(element.expression.right)
             }
             break
 
@@ -50,21 +58,22 @@ class Trace {
 
               throw Error(`Invalid state detected at: ${file}:${start},${end}`)
             } else if (isNotNullDeclaration) {
-              exportNodes.push(element.declaration)
+              // exportNodes.push(element.declaration)
             } else if (isNotEmptySpecifier) {
-              element.specifiers.forEach((specifier) => exportNodes.push(specifier))
+              // element.specifiers.forEach((specifier) => exportNodes.push(specifier))
             }
             break
 
           case 'ExportDefaultDeclaration':
-            exportNodes.push(element.declaration)
+            // exportNodes.push(element.declaration)
             break
 
           case 'ExportAllDeclaration':
             break
         }
+        */
       }
-      return new Trace(filePath, ast.ast.program.body, exportNodes)
+      return new Trace(filePath, ast.ast.program.body, [])
     }
     return null
   }

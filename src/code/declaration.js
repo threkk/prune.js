@@ -1,5 +1,5 @@
 const AbstractNode = require('../abstract/node')
-const parse = require('./parse')
+const parse = require('./parser')
 
 /**
  *  interface FunctionDeclaration <: Function, Declaration {
@@ -63,10 +63,12 @@ class VariableDeclarator extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const id = parse(node.id)
-    const init = parse(node.init)
-
     this.returns = id.returns
-    this.uses = init.uses
+
+    if (node.init != null) {
+      const init = parse(node.init)
+      this.uses = init.uses
+    }
   }
 }
 

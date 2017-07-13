@@ -1,5 +1,5 @@
 const AbstractNode = require('../abstract/node')
-const parse = require('./parse')
+const parse = require('./parser')
 
 /**
  *  interface Identifier <: Expression, Pattern {
@@ -110,15 +110,12 @@ class TemplateLiteral extends AbstractNode {
     const quasis = node.quasis.map((q) => parse(q))
     const expressions = node.expressions.map((e) => parse(e))
 
-    // TODO: review this.
     expressions.forEach((exp) => {
       this.uses = exp.uses
-      this.uses = exp.returns
     })
 
     quasis.forEach((quasi) => {
       this.uses = quasi.uses
-      this.uses = quasi.returns
     })
   }
 }
@@ -136,10 +133,7 @@ class TaggedTemplateExpression extends AbstractNode {
     const tag = parse(node.tag)
     const quasi = parse(node.quasi)
 
-    this.uses = tag.returns
     this.uses = tag.uses
-
-    this.uses = quasi.returns
     this.uses = quasi.uses
   }
 }
