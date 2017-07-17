@@ -24,11 +24,11 @@ class AbstractIssue {
    */
   constructor (type) {
     if (new.target === AbstractIssue) {
-      throw TypeError('new of abstract class AbstractIssue')
+      throw new TypeError('new of abstract class AbstractIssue')
     }
 
     if (!Object.values(Type).includes(type)) {
-      throw TypeError('invalid type of AbstractIssue')
+      throw new TypeError('invalid type of AbstractIssue')
     }
 
     this.type = type

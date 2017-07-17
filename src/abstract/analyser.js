@@ -1,13 +1,13 @@
 /**
-* Parent abstract class.
-*
-* @abstract
-*/
+ * Parent abstract class.
+ *
+ * @abstract
+ */
 class AbstractAnalyser {
   /** @constructor */
   constructor () {
     if (new.target === AbstractAnalyser) {
-      throw TypeError('new of abstract class Analyser')
+      throw new TypeError('new of abstract class Analyser')
     }
 
     if (this.analyse === undefined || typeof this.analyse !== 'function') {

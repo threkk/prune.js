@@ -1,7 +1,7 @@
 class AbstractNode {
   constructor (loc, type) {
     if (new.target === AbstractNode) {
-      throw TypeError('new of abstract class Node')
+      throw new TypeError('new of abstract class Node')
     }
 
     this._loc = loc
