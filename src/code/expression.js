@@ -228,9 +228,15 @@ class FunctionExpression extends AbstractNode {
       this.uses = id.uses
     }
 
+    params.forEach(p => {
+      if (p != null) {
+        this.declares = p.returns
+        this.uses = p.uses
+      }
+    })
+
     this.uses = body.uses
     this.declares = body.declares
-    this.declares = params.map((p) => p.returns)
   }
 }
 
@@ -482,7 +488,6 @@ class CallExpression extends AbstractNode {
     const args = node.arguments.map(a => parse(a))
 
     this.uses = callee.uses
-
     args.forEach((a) => {
       this.uses = a.uses
     })

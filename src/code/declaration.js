@@ -46,9 +46,10 @@ class VariableDeclaration extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const declarations = node.declarations.map(d => parse(d))
-
-    this.uses = declarations.uses
-    this.returns = declarations.returns
+    declarations.forEach(d => {
+      this.uses = d.uses
+      this.returns = d.returns
+    })
   }
 }
 
@@ -117,8 +118,10 @@ class ArrayPattern extends AbstractNode {
     const elements = node.elements.map(e => parse(e))
 
     elements.forEach(e => {
-      this.uses = e.uses
-      this.returns = e.returns
+      if (e != null) {
+        this.uses = e.uses
+        this.returns = e.returns
+      }
     })
   }
 }

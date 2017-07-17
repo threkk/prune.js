@@ -37,10 +37,10 @@ class Class extends AbstractNode {
 class ClassBody extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
+    const body = node.body.map(b => parse(b))
 
-    node.body.forEach((b) => {
-      const body = parse(b)
-      this.uses = body.uses
+    body.forEach(b => {
+      this.uses = b.uses
     })
   }
 }
@@ -71,7 +71,9 @@ class ClassMethod extends AbstractNode {
 
     this.returns = key.returns
     this.uses = body.uses
-    this.declares = params.map((p) => p.returns)
+    params.forEach(p => {
+      this.declares = p.returns
+    })
   }
 }
 
@@ -182,6 +184,11 @@ class ClassExpression extends AbstractNode {
 class MetaProperty extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
+    const meta = parse(node.meta)
+    const property = parse(node.property)
+
+    this.uses = meta.uses
+    this.uses = property.ues
   }
 }
 
