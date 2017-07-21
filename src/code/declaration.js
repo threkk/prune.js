@@ -19,14 +19,14 @@ class FunctionDeclaration extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const params = node.params.map(p => parse(p))
-    const body = node.body
+    const body = parse(node.body)
 
     params.forEach(p => {
       this.declares = p.returns
     })
 
-    this.uses = body.uses
-    this.declares = body.declares
+    this.uses = body
+    // this.declares = body.returns
 
     if (node.id != null) {
       const id = parse(node.id)

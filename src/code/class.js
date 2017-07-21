@@ -188,7 +188,7 @@ class MetaProperty extends AbstractNode {
     const property = parse(node.property)
 
     this.uses = meta.uses
-    this.uses = property.ues
+    this.uses = property.uses
   }
 }
 

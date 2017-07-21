@@ -219,7 +219,7 @@ class ObjectMethod extends AbstractNode {
 class FunctionExpression extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
-    const params = node.params.map((p) => parse(p))
+    const params = node.params.map(p => parse(p))
     const body = parse(node.body)
 
     if (node.id != null) {
@@ -404,8 +404,6 @@ class SpreadElement extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const argument = parse(node.argument)
-    // TODO: Review this.
-    console.log('SpreadElement', node)
     this.uses = argument.uses
   }
 }
@@ -426,6 +424,8 @@ class MemberExpression extends AbstractNode {
     const property = parse(node.property)
 
     this.uses = object.uses
+    // Objects "returned"?
+    this.uses = object.returns
     if (node.computed) {
       this.uses = property.uses
     }
@@ -488,8 +488,11 @@ class CallExpression extends AbstractNode {
     const args = node.arguments.map(a => parse(a))
 
     this.uses = callee.uses
+    // For classes and functions.
+    this.uses = callee.returns
     args.forEach((a) => {
       this.uses = a.uses
+      this.uses = a.returns
     })
   }
 }
@@ -499,10 +502,25 @@ class CallExpression extends AbstractNode {
  *      type: "NewExpression";
  *      optional: boolean | null;
  *  }
+ *  interface CallExpression <: Expression {
+ *      type: "CallExpression";
+ *      callee: Expression | Super | Import;
+ *      arguments: [ Expression | SpreadElement ];
+ *      optional: boolean | null;
+ *  }
  */
 class NewExpression extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
+    const callee = parse(node.callee)
+    const args = node.arguments.map(a => parse(a))
+
+    this.uses = callee.uses
+    // For classes and functions.
+    this.uses = callee.returns
+    args.forEach((a) => {
+      this.uses = a.uses
+    })
   }
 }
 

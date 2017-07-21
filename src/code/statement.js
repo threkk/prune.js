@@ -93,6 +93,8 @@ class ReturnStatement extends AbstractNode {
       const argument = parse(node.argument)
 
       this.uses = argument.uses
+      // If we return a new instance, we "use" it.
+      this.uses = argument.returns
       this.returns = argument.returns
     }
   }
@@ -199,8 +201,8 @@ class SwitchStatement extends AbstractNode {
     this.uses = discriminant.uses
     cases.forEach((c) => {
       // TODO: Review this, does not look too alright.
-      this.declares = c.declares
       this.uses = c.uses
+      this.uses = c.returns
       this.returns = c.returns
     })
   }
@@ -223,8 +225,8 @@ class SwitchCase extends AbstractNode {
 
     const consequent = node.consequent.map(c => parse(c))
     consequent.forEach(c => {
-      this.declares = c.declares
       this.uses = c.uses
+      this.uses = c.returns
       this.returns = c.returns
     })
   }

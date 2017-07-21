@@ -298,7 +298,7 @@ function parse (node) {
     case 'ExportAllDeclaration':
       return new ExportAllDeclaration(node)
     default:
-      throw TypeError(`Unknown node:  ${node}`)
+      throw TypeError(`Unknown node:  ${node.type}`)
   }
 }
 
