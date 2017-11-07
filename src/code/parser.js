@@ -107,6 +107,25 @@ function parse (node) {
     ExportAllDeclaration
   } = require('./module')
 
+  const {
+    JSXIdentifier,
+    JSXMemberExpression,
+    JSXNamespacedName,
+    JSXEmptyExpression,
+    JSXExpressionContainer,
+    JSXSpreadChild,
+    JSXBoundaryElement,
+    JSXOpeningElement,
+    JSXClosingElement,
+    JSXAttribute,
+    JSXSpreadAttribute,
+    JSXText,
+    JSXElement,
+    JSXFragment,
+    JSXOpeningFragment,
+    JSXClosingFragment
+  } = require('./react')
+
   switch (node.type) {
       // class.js
     case 'Class':
@@ -297,6 +316,40 @@ function parse (node) {
       return new OptClassDeclaration(node)
     case 'ExportAllDeclaration':
       return new ExportAllDeclaration(node)
+
+      // react.js
+    case 'JSXIdentifier':
+      return new JSXIdentifier(node)
+    case 'JSXMemberExpression':
+      return new JSXMemberExpression(node)
+    case 'JSXNamespacedName':
+      return new JSXNamespacedName(node)
+    case 'JSXEmptyExpression':
+      return new JSXEmptyExpression(node)
+    case 'JSXExpressionContainer':
+      return new JSXExpressionContainer(node)
+    case 'JSXSpreadChild':
+      return new JSXSpreadChild(node)
+    case 'JSXBoundaryElement':
+      return new JSXBoundaryElement(node)
+    case 'JSXOpeningElement':
+      return new JSXOpeningElement(node)
+    case 'JSXClosingElement':
+      return new JSXClosingElement(node)
+    case 'JSXAttribute':
+      return new JSXAttribute(node)
+    case 'JSXSpreadAttribute':
+      return new JSXSpreadAttribute(node)
+    case 'JSXText':
+      return new JSXText(node)
+    case 'JSXElement':
+      return new JSXElement(node)
+    case 'JSXFragment':
+      return new JSXFragment(node)
+    case 'JSXOpeningFragment':
+      return new JSXOpeningFragment(node)
+    case 'JSXClosingFragment':
+      return new JSXClosingFragment(node)
     default:
       throw TypeError(`Unknown node:  ${node.type}`)
   }
