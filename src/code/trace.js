@@ -2,10 +2,22 @@ const AST = require('../project/ast')
 const parse = require('./parser')
 
 class Trace {
-  constructor (filePath, astBody, exportNodes) {
+  constructor (filePath, statementNodes, exportNodes) {
     this._filePath = filePath
-    this._nodes = exportNodes
-    this._statements = astBody
+    this._exported = exportNodes || []
+    this._statements = statementNodes || []
+  }
+
+  get path () {
+    return this._filePath
+  }
+
+  get exported () {
+    return this._exported
+  }
+
+  get statements () {
+    return this._statements
   }
 
   static create (filePath, withES7, withJSX) {
@@ -17,29 +29,16 @@ class Trace {
       ast.ast.program.sourceType === 'module' &&
       Array.isArray(ast.ast.program.body)
 
+    const nodes = []
+    const exportNodes = []
     if (isValidBody) {
       for (let node of ast.ast.program.body) {
-        /*
         const element = parse(node)
-        if (typeof element === 'undefined') {
-          console.log(node)
-        }
 
         switch (element.type) {
           case 'ExpressionStatement':
-            if (element.returns.length > 0) {
-              console.log(element)
-            }
-            const isModuleExportExpr =
-              element.expression.type === 'AssignmentExpression' &&
-              element.expression.left.type === 'MemberExpression' &&
-              element.expression.left.object.type === 'Identifier' &&
-              element.expression.left.object.name === 'module' &&
-              element.expression.left.property.type === 'Identifier' &&
-              element.expression.left.property.name === 'exports'
-
-            if (isModuleExportExpr) {
-              // exportNodes.push(element.expression.right)
+            if (element.isModuleExportExpr) {
+              exportNodes.push(element)
             }
             break
 
@@ -58,22 +57,23 @@ class Trace {
 
               throw Error(`Invalid state detected at: ${file}:${start},${end}`)
             } else if (isNotNullDeclaration) {
-              // exportNodes.push(element.declaration)
+              exportNodes.push(element.declaration)
             } else if (isNotEmptySpecifier) {
-              // element.specifiers.forEach((specifier) => exportNodes.push(specifier))
+              element.specifiers.forEach((specifier) => exportNodes.push(specifier))
             }
             break
 
           case 'ExportDefaultDeclaration':
-            // exportNodes.push(element.declaration)
+            exportNodes.push(element)
             break
 
           case 'ExportAllDeclaration':
+            exportNodes.push(element)
             break
         }
-        */
+        nodes.push(element)
       }
-      return new Trace(filePath, ast.ast.program.body, [])
+      return new Trace(filePath, nodes, exportNodes)
     }
     return null
   }

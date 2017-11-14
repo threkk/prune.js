@@ -15,6 +15,14 @@ class ExpressionStatement extends AbstractNode {
     this.declares = expression.declares
     this.uses = expression.uses
     this.returns = expression.returns
+
+    this.isModuleExportExpr =
+      node.expression.type === 'AssignmentExpression' &&
+      node.expression.left.type === 'MemberExpression' &&
+      node.expression.left.object.type === 'Identifier' &&
+      node.expression.left.object.name === 'module' &&
+      node.expression.left.property.type === 'Identifier' &&
+      node.expression.left.property.name === 'exports'
   }
 }
 

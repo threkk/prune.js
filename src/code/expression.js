@@ -348,6 +348,7 @@ class AssignmentExpression extends AbstractNode {
     this.returns = left.returns
     this.uses = left.uses
     this.uses = right.uses
+    this.uses = right.returns
   }
 }
 
@@ -424,11 +425,11 @@ class MemberExpression extends AbstractNode {
     const property = parse(node.property)
 
     this.uses = object.uses
-    // Objects "returned"?
+    this.uses = property.uses
+
     this.uses = object.returns
-    if (node.computed) {
-      this.uses = property.uses
-    }
+    this.uses = property.returns
+    // }
   }
 }
 

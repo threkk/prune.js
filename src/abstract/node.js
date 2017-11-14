@@ -9,6 +9,11 @@ class AbstractNode {
     this._declares = []
     this._returns = []
     this._uses = []
+    this._children = []
+  }
+
+  get childContext () {
+    return this._children
   }
 
   get loc () {
@@ -52,6 +57,14 @@ class AbstractNode {
       this._uses = this._uses.concat(val)
     } else {
       this._uses.push(val)
+    }
+  }
+
+  set childContext (val) {
+    if (Array.isArray(val)) {
+      this._children = this._children.concat(val)
+    } else {
+      this._children.push(val)
     }
   }
 }
