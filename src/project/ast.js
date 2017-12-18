@@ -18,13 +18,15 @@ class AST {
     if (es7) plugins.push('*')
     if (jsx) plugins.push('jsx')
 
-    this._options = {
+    const options = {
       allowImportExportEverywhere: true, // Allows imports everywhere.
       sourceType: 'module', // Enables the import/export statements.
       ranges: true, // Add ranges to the nodes [node.start, node.end]
       plugins
     }
-    this._ast = this._buildAst()
+
+    const file = fs.readFileSync(this._path, 'utf-8')
+    this._ast = parse(file, options)
   }
 
   /** @return {Object} AST tree of the file. */
@@ -38,14 +40,18 @@ class AST {
   }
 
   /**
-   * Reads the file and executes the parser.
-   *
-   * @private
-   * @return {Object} AST tree of the file.
-   */
-  _buildAst () {
-    const file = fs.readFileSync(this._path, 'utf-8')
-    return parse(file, this._options)
+   * @return {array} Returns an array containing the nodes from the body. Empty
+   * if invalid.
+   **/
+  get body () {
+    if (this._ast != null &&
+      this._ast.program != null &&
+      this._ast.program.sourceType === 'module' &&
+      Array.isArray(this._ast.program.body)
+    ) {
+      return this._ast.program.body
+    }
+    return []
   }
 }
 

@@ -1,6 +1,7 @@
 const AbstractAnalyser = require('../abstract/analyser')
+const AST = require('../project/ast')
 const Trace = require('./trace')
-const _ = require('underscore')
+
 
 class CodeAnalyser extends AbstractAnalyser {
   constructor (config, files) {
@@ -12,26 +13,32 @@ class CodeAnalyser extends AbstractAnalyser {
   }
 
   analyse (logger) {
-    return new Promise((resolve, reject) => {
-      for (const filePath of this._files) {
-        try {
-          const trace = Trace.create(filePath, this._withES7, this._withJSX)
-          if (trace != null) {
-            console.log(trace.path)
-
-            const usedNodes = _.flatten(trace.exported.map(e => e.uses))
-            // FIRST LEVEL :D
-            const unUsedNodes = trace.statements.filter(node => !node.returns.reduce((acc, ret) => acc || usedNodes.includes(ret), false))
-            unUsedNodes.forEach(node => {
-              console.log(node.loc)
-            })
-          }
-        } catch (e) {
-          console.log(e)
-        }
+    return Promise.all(this._files.map(filePath => {
+      try {
+        const ast = new AST(filePath, this._withES7, this._withJSX)
+        const notUsedNodes = this.analyseContext(filePath, ast.body, [])
+      } catch (e) {
+        console.error(e)
       }
-      resolve(true)
-    })
+    })).then(() => true)
+  }
+
+  analyseContext (filePath, context, notUsed) {
+    const trace = new Trace(filePath, context, notUsed)
+    const ret = trace.analyse()
+    // For each node in the context, get children and repeat. Need to find a way
+    // to combine the responses (and to make them parallel with promises).
+    const amountNodes = context.length
+    const amountNotUsed = ret.length
+    const amountUsed = context.map(node => {
+      if (ret.includes(node)) {
+        return null
+      }
+      return node
+    }).filter(node => node !== null).length
+
+    console.log(ret)
+    console.log(amountNodes, amountNotUsed, amountUsed)
   }
 }
 

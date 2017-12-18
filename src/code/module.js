@@ -119,6 +119,8 @@ class ExportNamedDeclaration extends AbstractNode {
       this.uses = declaration.uses
       this.returns = declaration.returns
     }
+
+    this._isExporter = true
   }
 }
 
@@ -153,6 +155,7 @@ class ExportDefaultDeclaration extends AbstractNode {
 
     this.uses = declaration.uses
     this.returns = declaration.returns
+    this._isExporter = true
   }
 }
 
@@ -192,6 +195,8 @@ class OptFunctionDeclaration extends AbstractNode {
       const id = parse(node.id)
       this.returns = id.returns
     }
+
+    this._isExporter = true
   }
 }
 

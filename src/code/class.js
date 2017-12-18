@@ -25,6 +25,7 @@ class Class extends AbstractNode {
     }
 
     this.uses = body.uses
+    this.children = body.children
   }
 }
 
@@ -38,6 +39,7 @@ class ClassBody extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const body = node.body.map(b => parse(b))
+    this.children = node.body
 
     body.forEach(b => {
       this.uses = b.uses
@@ -74,6 +76,8 @@ class ClassMethod extends AbstractNode {
     params.forEach(p => {
       this.declares = p.returns
     })
+
+    this.children = body.children
   }
 }
 
@@ -141,6 +145,8 @@ class ClassDeclaration extends AbstractNode {
 
     this.uses = body.uses
     this.returns = id.returns
+
+    this.children = body.children
   }
 }
 
@@ -171,6 +177,7 @@ class ClassExpression extends AbstractNode {
     }
 
     this.uses = body.uses
+    this.children = body.children
   }
 }
 

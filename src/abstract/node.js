@@ -10,10 +10,15 @@ class AbstractNode {
     this._returns = []
     this._uses = []
     this._children = []
+    this._isExporter = false
   }
 
-  get childContext () {
+  get children () {
     return this._children
+  }
+
+  get isExporter () {
+    return this._isExporter
   }
 
   get loc () {
@@ -60,7 +65,7 @@ class AbstractNode {
     }
   }
 
-  set childContext (val) {
+  set children (val) {
     if (Array.isArray(val)) {
       this._children = this._children.concat(val)
     } else {

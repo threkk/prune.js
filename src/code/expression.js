@@ -189,6 +189,7 @@ class ObjectMethod extends AbstractNode {
     const key = parse(node.key)
     const body = parse(node.body)
     const params = node.params.map((p) => parse(p))
+    this.children = body.children
 
     if (node.id != null) {
       const id = parse(node.id)
@@ -221,7 +222,7 @@ class FunctionExpression extends AbstractNode {
     super(node.loc, node.type)
     const params = node.params.map(p => parse(p))
     const body = parse(node.body)
-
+    this.children = body.children
     if (node.id != null) {
       const id = parse(node.id)
       this.returns = id.returns

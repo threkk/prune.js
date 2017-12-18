@@ -16,7 +16,7 @@ class ExpressionStatement extends AbstractNode {
     this.uses = expression.uses
     this.returns = expression.returns
 
-    this.isModuleExportExpr =
+    this._isExporter =
       node.expression.type === 'AssignmentExpression' &&
       node.expression.left.type === 'MemberExpression' &&
       node.expression.left.object.type === 'Identifier' &&
@@ -37,6 +37,7 @@ class BlockStatement extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const body = node.body.map(b => parse(b))
+    this.children = node.body
 
     body.forEach(b => {
       this.declares = b.declares
@@ -80,6 +81,7 @@ class WithStatement extends AbstractNode {
     super(node.loc, node.type)
     const object = parse(node.object)
     const body = parse(node.body)
+    this.children = body.children
 
     this.uses = object.uses
     this.uses = body.uses
@@ -120,6 +122,7 @@ class LabeledStatement extends AbstractNode {
     super(node.loc, node.type)
     const label = parse(node.label)
     const body = parse(node.body)
+    this.children = body.children
 
     this.uses = label.returns
     this.declares = body.declares
@@ -271,6 +274,7 @@ class TryStatement extends AbstractNode {
     this.declares = block.declares
     this.returns = block.returns
     this.uses = block.uses
+    this.children = block.children
 
     if (node.handler != null) {
       const handler = parse(node.handler)
@@ -284,6 +288,7 @@ class TryStatement extends AbstractNode {
       this.uses = finalizer.uses
       this.declares = finalizer.declares
       this.returns = finalizer.returns
+      this.children = finalizer.children
     }
   }
 }
@@ -306,6 +311,7 @@ class CatchClause extends AbstractNode {
     this.declares = body.declares
     this.uses = body.uses
     this.returns = body.returns
+    this.children = body.children
   }
 }
 

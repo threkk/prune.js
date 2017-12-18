@@ -20,6 +20,7 @@ class FunctionDeclaration extends AbstractNode {
     super(node.loc, node.type)
     const params = node.params.map(p => parse(p))
     const body = parse(node.body)
+    this.children = body.children
 
     params.forEach(p => {
       this.declares = p.returns
