@@ -39,9 +39,9 @@ const filterExportNodes = arr => (_.flatten(
 ))
 
 class Trace {
-  constructor (filePath, statementNodes, remaining) {
+  constructor (filePath, statementNodes, remanent) {
     this._filePath = filePath
-    this._remaining = remaining || []
+    this._remanent = remanent || []
     this._statements = (statementNodes || []).map(node => parse(node))
     this._exported = filterExportNodes(this._statements)
   }
@@ -58,19 +58,32 @@ class Trace {
     return this._statements
   }
 
-  // Add extra context?
   analyse () {
-    const usedNodes = _.flatten(this.exported.map(e => e.uses))
-    // FIRST LEVEL :D
-    const statements = this.statements.concat(this._remaining)
-    const notUsedNodes = statements.filter(statement =>
+    // The nodes used by a module are those which are used by the exporter
+    // function of the module recursively.
+    const usedNodeIds = _.flatten(this.exported.map(e => e.uses))
+
+    // Our working statements are those from the context plus the ones that have
+    // not been used from the previous context.
+    const statements = this.statements.concat(this._remanent)
+
+    // The not used nodes are those node which all returned values are not
+    // contained in the used node ids or they are the exporter itself. The used
+    // nodes are all others.
+    const [notUsed, used] = _.partition(statements, statement =>
+      // This might not be true if it is possible to modify a variable/content
+      // of a variable in a referential way (C style).
       !statement.returns.reduce(
-        (acc, ret) => acc || usedNodes.includes(ret),
+        (acc, ret) => acc || usedNodeIds.includes(ret),
         false
       ) &&
       !statement.isExporter
     )
-    return notUsedNodes
+
+    return {
+      notUsed,
+      used
+    }
   }
 }
 
