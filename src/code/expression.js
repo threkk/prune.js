@@ -128,7 +128,6 @@ class ObjectExpression extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const properties = node.properties.map(p => parse(p))
-
     properties.forEach(p => { this.uses = p.uses })
   }
 }
@@ -160,8 +159,13 @@ class ObjectProperty extends AbstractNode {
   constructor (node) {
     super(node.loc, node.type)
     const value = parse(node.value)
+    const key = parse(node.key)
 
-    this.uses = value.uses
+    if (node.shorthand) {
+      this.uses = key.returns
+    } else {
+      this.uses = value.uses
+    }
   }
 }
 
@@ -426,11 +430,11 @@ class MemberExpression extends AbstractNode {
     const property = parse(node.property)
 
     this.uses = object.uses
-    this.uses = property.uses
-
     this.uses = object.returns
-    this.uses = property.returns
-    // }
+
+    if (node.computed) {
+      this.uses = property.uses
+    }
   }
 }
 
@@ -494,7 +498,7 @@ class CallExpression extends AbstractNode {
     this.uses = callee.returns
     args.forEach((a) => {
       this.uses = a.uses
-      this.uses = a.returns
+      // this.uses = a.returns
     })
   }
 }

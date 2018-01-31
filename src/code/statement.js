@@ -23,6 +23,9 @@ class ExpressionStatement extends AbstractNode {
       node.expression.left.object.name === 'module' &&
       node.expression.left.property.type === 'Identifier' &&
       node.expression.left.property.name === 'exports'
+    if (this._isExporter) {
+      console.log(node.expression.right)
+    }
   }
 }
 

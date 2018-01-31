@@ -39,15 +39,18 @@ const filterExportNodes = arr => (_.flatten(
 ))
 
 class Trace {
-  constructor (filePath, statementNodes, remanent) {
-    this._filePath = filePath
+  constructor (statementNodes, remanent) {
     this._remanent = remanent || []
     this._statements = (statementNodes || []).map(node => parse(node))
     this._exported = filterExportNodes(this._statements)
-  }
+    this._symbols = {}
 
-  get path () {
-    return this._filePath
+    for (let statement of this._statements) {
+      for (let ret of statement.returns) {
+        this._symbols[ret] = statement
+      }
+    }
+    console.log('symbols', Object.keys(this._symbols))
   }
 
   get exported () {
@@ -61,7 +64,9 @@ class Trace {
   analyse () {
     // The nodes used by a module are those which are used by the exporter
     // function of the module recursively.
-    const usedNodeIds = _.flatten(this.exported.map(e => e.uses))
+    // TODO: Check the used nodes in the table of symbols to get the extended
+    // usage.
+    const usedNodeIds = _.flatten(_.uniq(this.exported.map(e => e.uses)))
 
     // Our working statements are those from the context plus the ones that have
     // not been used from the previous context.

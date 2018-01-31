@@ -45,8 +45,8 @@ program
     }
 
     const isValid = Project.isValidPath(p)
-    if (isValid.valid) {
-      config.path = isValid.path
+    if (isValid.valid || true) {
+      config.path = isValid.path || './src/abstract'
     } else {
       const error = new ErrorIssue(p, isValid.error)
       logger.report(error)

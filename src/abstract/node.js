@@ -1,3 +1,5 @@
+const assert = require('assert')
+
 class AbstractNode {
   constructor (loc, type) {
     if (new.target === AbstractNode) {
@@ -70,6 +72,15 @@ class AbstractNode {
       this._children = this._children.concat(val)
     } else {
       this._children.push(val)
+    }
+  }
+
+  isEquals (node) {
+    try {
+      assert.deepEqual(this, node)
+      return true
+    } catch (e) {
+      return false
     }
   }
 }

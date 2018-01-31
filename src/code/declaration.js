@@ -49,6 +49,7 @@ class VariableDeclaration extends AbstractNode {
     const declarations = node.declarations.map(d => parse(d))
     declarations.forEach(d => {
       this.uses = d.uses
+      this.uses = d.returns
       this.returns = d.returns
     })
   }
