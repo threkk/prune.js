@@ -28,7 +28,10 @@ class AbstractNode {
     throw new TypeError(`method not implemented in the class ${this.node.type}`)
   }
 
-  getChildren () {
+  /**
+   * Given a node, it returns its children as a new scope.
+   */
+  getChildren (scope, factory) {
     throw new TypeError(`method not implemented in the class ${this.node.type}`)
   }
 

@@ -1,6 +1,5 @@
 const _ = require('underscore')
 const Trace = require('./trace')
-const test = () => console.log('Not used!!')
 
 const contains = (el, arr) => {
   for (let a of arr) {
