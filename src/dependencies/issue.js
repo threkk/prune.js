@@ -34,46 +34,27 @@ class DependencyIssue extends AbstractIssue {
       throw new Error(`The type ${depType} is not a valid type.`)
     }
 
-    this._depType = depType
-    this._name = name
+    this.dep = depType
+    this.name = name
   }
 
   toString () {
     let msg
-    if (this._depType === DependencyType.DEP) {
-      msg = `The dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.DEV) {
-      msg = `The dev-dependency ${this._name} is not used.`
-    } else if (this._depType === DependencyType.MIS) {
-      msg = `The package ${this._name} has been found in the node_modules but ` +
+    if (this.dep === DependencyType.DEP) {
+      msg = `The dependency ${this.name} is not used.`
+    } else if (this.dep === DependencyType.DEV) {
+      msg = `The dev-dependency ${this.name} is not used.`
+    } else if (this.dep === DependencyType.MIS) {
+      msg = `The package ${this.name} has been found in the node_modules but ` +
             `it is not in the package.json`
     }
     return msg
   }
 
-  /**
-   * @constant
-   * @return {Symbol} Dependency constant.
-   */
-  static get DEP () {
-    return DependencyType.DEP
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Dev-dependency constant.
-   */
-  static get DEV () {
-    return DependencyType.DEV
-  }
-
-  /**
-   * @constant
-   * @return {Symbol} Missing dependency constant.
-   */
-  static get MIS () {
-    return DependencyType.MIS
+  static toSymbol () {
+    return AbstractIssue.DEPENDENCY
   }
 }
 
 module.exports = DependencyIssue
+module.exports.TYPE = DependencyType
