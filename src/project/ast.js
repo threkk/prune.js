@@ -1,52 +1,45 @@
-const { parse } = require('babylon')
 const fs = require('fs')
+const { promisify } = require('util')
+const { parse } = require('babylon')
+
+const readFile = promisify(fs.readFile)
 
 /**
  * Generates an AST of the given JavaScript file using the Babel compiler.
  */
-class AST {
+class ASTParser {
   /**
    * @constructor
-   * @param {string} path - Path to the file.
    * @param {boolean} es7 - If the parser should enable `ES7` features.
    * @param {boolean} jsx - If the parser should enable `JSX`.
    */
-  constructor (path, es7 = false, jsx = false) {
-    this._path = path
-
+  constructor (es7 = false, jsx = false) {
     const plugins = []
-    if (es7) plugins.push('*')
     if (jsx) plugins.push('jsx')
+    if (es7) {
+      plugins.push('estree')
+      plugins.push('doExpressions')
+      plugins.push('decorators')
+    }
 
-    this._options = {
-      allowImportExportEverywhere: true, // Allows imports everywhere.
+    this.options = {
       sourceType: 'module', // Enables the import/export statements.
       ranges: true, // Add ranges to the nodes [node.start, node.end]
+      tokens: false, // Disables token listing.
       plugins
     }
-    this._ast = this._buildAst()
-  }
-
-  /** @return {Object} AST tree of the file. */
-  get ast () {
-    return this._ast
-  }
-
-  /** @return {string} Path to the file */
-  get path () {
-    return this._path
   }
 
   /**
    * Reads the file and executes the parser.
    *
-   * @private
-   * @return {Object} AST tree of the file.
+   * @return {Promise} AST tree of the file.
+   * @throws TypeError Error if invalid AST.
    */
-  _buildAst () {
-    const file = fs.readFileSync(this._path, 'utf-8')
-    return parse(file, this._options)
+  async build (path) {
+    const file = await readFile(path, 'utf-8')
+    return parse(file, this.options)
   }
 }
 
-module.exports = AST
+module.exports = ASTParser

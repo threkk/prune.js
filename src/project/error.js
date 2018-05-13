@@ -13,12 +13,16 @@ class ErrorIssue extends AbstractIssue {
    */
   constructor (path, error) {
     super(AbstractIssue.ERROR)
-    this._error = error
-    this._path = path
+    this.error = error
+    this.path = path
   }
 
   toString () {
-    return chalk.red(`Error found at ${this._path}: ${this._error}`)
+    return chalk.red(`Error found at ${this.path}: ${this.error}`)
+  }
+
+  static toSymbol () {
+    return AbstractIssue.ERROR
   }
 }
 
