@@ -1,10 +1,10 @@
 const _ = require('underscore')
-const nPath = require('path')
+const { resolve, extname } = require('path')
 
-const AbstractAnalyser = require('../abstract/analyser')
-const ErrorIssue = require('../project/error')
-const Module = require('./module')
-const ModuleIssue = require('./issue')
+const ErrorReport = require('../project/report/error')
+const ModuleReport = require('../project/report/module')
+const { LEAF, MISSING, UNUSED } = ModuleReport.TYPE
+const { analyseFile } = require('./module')
 
 const pkg = require('../../package.json')
 
@@ -14,19 +14,17 @@ const pkg = require('../../package.json')
  * and files that import modules but do not export anything else (named as
  * script for convenience).
  */
-class ModulesAnalyser extends AbstractAnalyser {
+class ModulesAnalyser {
   /**
    * @constructor
    * @param {Config} config - Project configuration.
    * @param {array} files - Array containing the list of file paths of the
    * project.
    */
-  constructor (config, files) {
-    super()
-    this._files = files
-    this._root = config.path
-    this._withES7 = config.withES7
-    this._withJSX = config.withJSX
+  constructor (config) {
+    this.root = config.path
+    this.withES7 = config.withES7
+    this.withJSX = config.withJSX
   }
 
   /**
@@ -36,90 +34,82 @@ class ModulesAnalyser extends AbstractAnalyser {
    * @return {Promise} Promise holding the results. These results are also
    * logged in the logger.
    */
-  analyse (logger) {
-    return new Promise((resolve, reject) => {
-      const modules = []
-
-      for (const filePath of this._files) {
-        try {
-          const module = Module.create(filePath, this._withES7, this._withJSX)
-
-          if (module != null) {
-            modules.push(module)
-          }
-        } catch (e) {
-          // Some error has been found by the parser and it is reported to the
-          // logger.
-          const error = new ErrorIssue(filePath, e)
-          logger.report(error)
-        }
-      }
-
-      const declaredModules = modules.map(module => module.filePath)
-      const exportedModules = []
-      let importedModules = new Set()
-
-      for (let module of modules) {
-        if (module.isExported) {
-          exportedModules.push(module.filePath)
-        }
-
-        for (let used of module.uses) {
-          importedModules.add(used)
-        }
-      }
-
-      importedModules = [...importedModules]
-
-      const unused = _.difference(exportedModules, importedModules)
-      const scripts = _.difference(declaredModules, exportedModules)
-      const missing = _.difference(importedModules, declaredModules)
-
-      const unusedIssues = unused.map(path => new ModuleIssue(ModuleIssue.UNUSED, path))
-      const missingIssues = missing.map((path) => {
-        const ext = nPath.extname(path)
-
-        if (ext === 'js' || ext === 'jsx') {
-          return new ModuleIssue(ModuleIssue.MISSING, path)
-        }
-
+  async analyse (logger, files) {
+    const modules = (await Promise.all(files.map(async file => {
+      try {
+        return await analyseFile(file, this.withES7, this.withJSX)
+      } catch (e) {
+        // Some error has been found by the parser and it is reported to the logger.
+        const error = new ErrorReport(file, e)
+        logger.report(error)
         return null
-      }).filter(path => path != null)
+      }
+    })))
+    .filter(maybeModule => maybeModule != null)
 
-      // We want to avoid marking the defined scripts and the entry point of the
-      // project as files which do not export anything.
-      let main = null
-      if (pkg.main != null) {
-        main = nPath.resolve(this._root, pkg.main)
+    const declaredModules = modules.map(module => module.filePath)
+    const exportedModules = (await Promise.all(modules.map(async module =>
+      module.isExported ? module.filePath : null)))
+    .filter(maybeModule => maybeModule != null)
+
+    let importedModules = new Set()
+    for (let module of modules) {
+      for (let used of module.uses) {
+        importedModules.add(used)
+      }
+    }
+
+    // Set to array.
+    importedModules = [...importedModules]
+
+    const unused = _.difference(exportedModules, importedModules)
+    const scripts = _.difference(declaredModules, exportedModules)
+    const missing = _.difference(importedModules, declaredModules)
+
+    const unusedReports = unused.map(path => new ModuleReport(UNUSED, path))
+    const missingReports = missing.map((path) => {
+      const ext = extname(path)
+
+      if (ext === 'js' || ext === 'jsx') {
+        return new ModuleReport(MISSING, path)
       }
 
-      const binPaths = []
-      if (pkg.bin != null) {
-        for (let command in pkg.bin) {
-          if (pkg.bin[command] != null) {
-            binPaths.push(nPath.resolve(this._root, pkg.bin[command]))
-          }
-        }
-      }
-
-      const scriptIssues = scripts.map((path) => {
-        if (path === main) {
-          return null
-        }
-
-        if (binPaths.includes(path)) {
-          return null
-        }
-
-        return new ModuleIssue(ModuleIssue.SCRIPT, path)
-      })
-      .filter((path) => path != null)
-
-      const allIssues = [].concat(unusedIssues, missingIssues, scriptIssues)
-      allIssues.forEach(issue => logger.report(issue))
-
-      resolve(allIssues)
+      return null
     })
+    .filter(path => path != null)
+
+    // We want to avoid marking the defined scripts and the entry point of the
+    // project as files which do not export anything.
+    let main = null
+    if (pkg.main != null) {
+      main = resolve(this.root, pkg.main)
+    }
+
+    const binPaths = []
+    if (pkg.bin != null) {
+      for (let command in pkg.bin) {
+        if (pkg.bin[command] != null) {
+          binPaths.push(resolve(this.root, pkg.bin[command]))
+        }
+      }
+    }
+
+    const leafReports = scripts.map((path) => {
+      if (path === main) {
+        return null
+      }
+
+      if (binPaths.includes(path)) {
+        return null
+      }
+
+      return new ModuleReport(LEAF, path)
+    }).filter((path) => path != null)
+
+    const allReports = [].concat(unusedReports, missingReports, leafReports)
+    allReports.forEach(report => logger.report(report))
+
+    return allReports
   }
 }
 

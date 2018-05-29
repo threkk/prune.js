@@ -1,11 +1,14 @@
 const chalk = require('chalk')
 const fs = require('fs')
 const ora = require('ora')
-const path = require('path')
-const validator = require('package-json-validator').PJV
 
-const { dirname, extname, isAbsolute, resolve } = require('path')
-const { cwd } = require('process')
+const ErrorReport = require('./report/error')
+
+const { extname, resolve } = require('path')
+const { promisify } = require('util')
+
+const stat = promisify(fs.stat)
+const readdir = promisify(fs.readdir)
 
 /**
  * The Project class acts as a monad and holds all the different analysers to
@@ -20,10 +23,14 @@ class Project {
    * @param {Logger} logger - Logger where the analysers report their findings.
    */
   constructor (config, logger) {
-    this._analysers = []
-    this._config = config
-    this._files = this._files(config.path)
-    this._logger = logger
+    this.analysers = []
+    this.config = config
+    this.logger = logger
+    this.validExt = ['.js']
+
+    if (this.config.withJSX) {
+      this.validExt.push('.jsx')
+    }
   }
 
   /**
@@ -34,7 +41,7 @@ class Project {
    * @return {Project} - The objects itself to allow method chaining.
    */
   analyse (Analyser) {
-    this._analysers.push(new Analyser(this._config, this._files))
+    this.analysers.push(new Analyser(this.config))
     return this
   }
 
@@ -42,109 +49,96 @@ class Project {
    * Executes all the registered analysers and display the results in the
    * screen.
    */
-  execute () {
+  async execute () {
     const check = chalk.green('✔')
     const uncheck = chalk.red('✘')
 
-    console.log(`Starting ${chalk.bold('prunejs')} on ${this._config.path}`)
+    console.log(`Starting ${chalk.bold('prunejs')} on ${this.config.path}`)
     console.log('')
     console.log(chalk.underline('Options:'))
-    console.log(`  ${this._config.withES7 ? check : uncheck} ES7`)
-    console.log(`  ${this._config.withJSX ? check : uncheck} JSX`)
+    console.log(`  ${this.config.withES7 ? check : uncheck} ES7`)
+    console.log(`  ${this.config.withJSX ? check : uncheck} JSX`)
     console.log('')
     console.log(`The following folders are ${chalk.bold('ignored')}:`)
-    this._config.ignoreDirs.forEach((dir) => console.log(`  - ${dir}`))
+    this.config.ignoreDirs.forEach((dir) => console.log(`  - ${dir}`))
     console.log('')
 
     const spinner = ora('Processing...').start()
-    Promise.all(
-      this._analysers.map((a) => a.analyse(this._logger))
-    )
-    .then(() => {
+    try {
+      const files = await this.extractFiles(this.config.path)
+      await Promise.all(this.analysers.map(a => a.analyse(this.logger, files)))
+
       spinner.succeed('Success!')
       console.log('')
-      this._logger.displayDependencies()
-      this._logger.displayModules()
-      this._logger.displayCode()
-      this._logger.displayErrors()
-    })
-    .catch((err) => {
-      spinner.fail(`Error found: ${err}`)
-    })
+
+      this.logger.displayDependencies()
+      this.logger.displayModules()
+      this.logger.displayCode()
+
+      if (this.logger.hasErrors(ErrorReport.symbol())) {
+        this.logger.displayErrors()
+      }
+    } catch (err) {
+      spinner.fail(`Error found.`)
+
+      const error = new ErrorReport('executable', err.message)
+      console.log(err)
+      this.logger.report(error)
+      this.logger.displayErrors()
+    }
   }
 
   /**
    * Extracts all the file paths from the project. Valid files depend on the
    * configuration. `node_modules` are always ignored.
    */
-  _files () {
+  async extractFiles () {
     const dirs = []
     const files = []
-    const validExt = ['.js']
 
-    if (this._config.withJSX) validExt.push('.jsx')
-
-    dirs.push(this._config.path)
-
+    dirs.push(this.config.path)
     while (dirs.length > 0) {
       const dir = dirs.pop()
+      try {
+        const items = await readdir(dir)
+        const results = await Promise.all(items.map(item => this.processFile(dir, item)))
 
-      fs.readdirSync(dir).forEach((file) => {
-        const filePath = resolve(dir, file)
-        const isIgnored = this._config.ignoreDirs.includes(filePath)
-        const isHidden = file.charAt(0) === '.'
-
-        if (!isIgnored && !isHidden) {
-          const stats = fs.statSync(filePath)
-
-          if (stats.isDirectory()) {
-            dirs.push(filePath)
-          } else if (validExt.includes(extname(file))) {
-            files.push(filePath)
+        results.forEach(result => {
+          switch (result.action) {
+            case 'pushDir': dirs.push(result.filePath); break
+            case 'pushFile' : files.push(result.filePath); break
           }
-        }
-      })
+        })
+      } catch (e) {
+        const error = new ErrorReport(dir, 'Error reading the directory')
+        this.logger.report(error)
+        continue
+      }
     }
     return files
   }
 
-  /**
-   * Checks if the given path is a valid project path. To be valid, it needs to
-   * point to a folder which contains a valid package.json file.
-   *
-   * @param {string} p - Path to the project.
-   * @return {Object}
-   */
-  static isValidPath (p) {
-    if (fs.existsSync(p)) {
-      let pkgPath = null
+  async processFile (dir, file) {
+    const filePath = resolve(dir, file)
+    const isIgnored = this.config.ignoreDirs.includes(filePath)
+    const isHidden = file.charAt(0) === '.'
+    const result = { filePath, action: 'none' }
 
-      if (isAbsolute(p)) {
-        pkgPath = path.resolve(p, 'package.json')
-      } else {
-        pkgPath = path.resolve(cwd(), p, 'package.json')
-      }
+    if (!isIgnored && !isHidden) {
+      try {
+        const stats = await stat(filePath)
 
-      if (fs.existsSync(pkgPath)) {
-        const pkg = fs.readFileSync(pkgPath, 'utf-8')
-        const validate = validator.validate(pkg)
-
-        if (validate.valid) {
-          return { valid: true, path: dirname(pkgPath) }
+        if (stats.isDirectory()) {
+          result.action = 'pushDir'
+        } else if (this.validExt.includes(extname(file))) {
+          result.action = 'pushFile'
         }
-
-        let reason = 'The package.json found is invalid: '
-        for (let index in validate.errors) {
-          reason += `\n - ${validate.errors[index]}`
-        }
-        return { valid: false, error: reason }
-      }
-      return {
-        valid: false,
-        error: 'The package.json was not found in the project.'
+      } catch (e) {
+        const error = new ErrorReport(filePath, 'Error reading the file.')
+        this.logger.report(error)
       }
     }
-    return { valid: false, error: 'The given path does not exist.' }
+    return result
   }
 }
 

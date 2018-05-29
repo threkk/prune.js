@@ -5,14 +5,13 @@ const fs = require('fs')
 const process = require('process')
 
 const RPJ = require('read-package-json')
-const AbstractAnalyser = require('../abstract/analyser')
-const DependencyIssue = require('./issue')
-const ErrorIssue = require('../project/error')
+const DependencyReport = require('../project/report/dependency')
+const ErrorReport = require('../project/report/error')
 
 const check = promisify(depcheck)
 const readJson = promisify(RPJ)
 
-const { DEP, DEV, MIS } = DependencyIssue.TYPE
+const { DEP, DEV, MIS } = DependencyReport.TYPE
 
 const SPECIALS = {
   babel: depcheck.special.babel,
@@ -29,14 +28,12 @@ const SPECIALS = {
  * and `devDependencies` of the `package.json`. It also scans the `node_modules`
  * folder looking for packages installed that are not in the `package.json`.
  */
-class DependenciesAnalyser extends AbstractAnalyser {
+class DependenciesAnalyser {
   /**
    * @constructor
    * @param {Config} config - Project configuration.
    */
-  constructor (config, files) {
-    super()
-
+  constructor (config) {
     const parsers = { '*.js': depcheck.parser.es6 }
 
     if (config.withES7) {
@@ -70,10 +67,10 @@ class DependenciesAnalyser extends AbstractAnalyser {
    * @return {Promise} Promise holding the results. These results are also
    * logged in the Logger.
    */
-  async analyse (logger) {
+  async analyse (logger, files) {
     const pkgPath = await isValidPath(this.path)
     if (!pkgPath) {
-      const error = new ErrorIssue(this.path, 'Invalid path')
+      const error = new ErrorReport(this.path, 'Invalid path')
       logger.report(error)
       return
     }
@@ -116,9 +113,9 @@ class DependenciesAnalyser extends AbstractAnalyser {
       missing
     } = checks
 
-    dependencies.forEach(dependency => logger.report(new DependencyIssue(DEP, dependency)))
-    devDependencies.forEach(devDep => logger.report(new DependencyIssue(DEV, devDep)))
-    Object.keys(missing).forEach(missing => logger.report(new DependencyIssue(MIS, missing)))
+    dependencies.forEach(dependency => logger.report(new DependencyReport(DEP, dependency)))
+    devDependencies.forEach(devDep => logger.report(new DependencyReport(DEV, devDep)))
+    Object.keys(missing).forEach(missing => logger.report(new DependencyReport(MIS, missing)))
   }
 }
 

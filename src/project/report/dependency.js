@@ -1,4 +1,4 @@
-const AbstractIssue = require('../abstract/issue')
+const { DEPENDENCY } = require('./type')
 
 /**
  * Different types of dependecy issues that can be defined.
@@ -20,7 +20,7 @@ const DependencyType = {
  * - Unused `devDependencies`.
  * - Modules in `node_modules` not reported in the `package.json`.
  */
-class DependencyIssue extends AbstractIssue {
+class DependencyReport {
   /**
    * @constructor
    * @param {Symbol} depType - Type of dependecy issue.
@@ -28,14 +28,9 @@ class DependencyIssue extends AbstractIssue {
    * @throws Error - If `depType` is not a valid dependency type.
    */
   constructor (depType, name) {
-    super(AbstractIssue.DEPENDENCY)
-
-    if (!Object.values(DependencyType).includes(depType)) {
-      throw new Error(`The type ${depType} is not a valid type.`)
-    }
-
     this.dep = depType
     this.name = name
+    this.type = DependencyReport.symbol()
   }
 
   toString () {
@@ -51,10 +46,10 @@ class DependencyIssue extends AbstractIssue {
     return msg
   }
 
-  static toSymbol () {
-    return AbstractIssue.DEPENDENCY
+  static symbol () {
+    return DEPENDENCY
   }
 }
 
-module.exports = DependencyIssue
+module.exports = DependencyReport
 module.exports.TYPE = DependencyType

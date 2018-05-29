@@ -1,5 +1,5 @@
 const chalk = require('chalk')
-const AbstractIssue = require('../abstract/issue')
+const { CODE, DEPENDENCY, ERROR, MODULE } = require('./report/type')
 
 /**
  * Stores all the reported issues found in the project. It support different
@@ -12,10 +12,10 @@ const AbstractIssue = require('../abstract/issue')
 class Logger {
   /** @constructor */
   constructor () {
-    this._dependencies = []
-    this._errors = []
-    this._modules = []
-    this._code = []
+    this.dependencies = []
+    this.errors = []
+    this.modules = []
+    this.code = []
   }
 
   /**
@@ -25,103 +25,72 @@ class Logger {
    */
   report (issue) {
     switch (issue.type) {
-      case AbstractIssue.DEPENDENCY : this._dependencies.push(issue); break
-      case AbstractIssue.ERROR : this._errors.push(issue); break
-      case AbstractIssue.MODULE : this._modules.push(issue); break
-      case AbstractIssue.CODE : this._code.push(issue); break
+      case CODE : this.code.push(issue); break
+      case DEPENDENCY : this.dependencies.push(issue); break
+      case MODULE : this.modules.push(issue); break
+      default : this.errors.push(issue); break
     }
   }
 
   /**
-   * Retrieves the reported dependency issues.
-   * @return {array} - Dependency issues.
+   * Inidicates if the logger contains any error.
+   *
+   * @param {Symbol} type - Type of error to check, or null for anyone.
    */
-  get dependencies () {
-    return this._dependencies
-  }
-
-  /**
-   * Retrieves the errors found during the analysis.
-   * @return {array} - Errors.
-   */
-  get errors () {
-    return this._errors
-  }
-
-  /**
-   * Retrieves the reported module issues.
-   * @return {array} - Module issues.
-   */
-  get modules () {
-    return this._modules
-  }
-
-  /**
-   * Retrieves the reported code issues.
-   * @return {array} - Code issues.
-   */
-  get code () {
-    return this._code
+  hasErrors (type = null) {
+    switch (type) {
+      case CODE: return this.code.length > 0
+      case DEPENDENCY: return this.dependencies.length > 0
+      case ERROR: return this.errors.length > 0
+      case MODULE: return this.modules.length > 0
+      default: return this.code.length > 0 ||
+        this.dependencies.length > 0 ||
+        this.errors.length > 0 ||
+        this.modules.length > 0
+    }
   }
 
   /** Displays a message showing the issues with the dependencies. */
   displayDependencies () {
-    const amount = this._dependencies.length
-
+    const amount = this.dependencies.length
     console.log(chalk.bold('Dependencies'))
-    if (amount === 1) {
-      console.log(`1 dependency issue was found.`)
-    } else {
-      console.log((`${amount} dependency issues were found.`))
-    }
+    console.log((`${amount} dependency issue${amount === 1 ? ' was' : 's were'} found.`))
 
-    this._dependencies.forEach((dep) => console.log(`- ${dep}`))
+    this.dependencies.forEach(dep => console.log(`  - ${dep}`))
     console.log('')
   }
 
   /** Displays a message showing the issues with the modules.  */
   displayModules () {
-    const amount = this._modules.length
+    const amount = this.modules.length
 
     console.log(chalk.bold('Modules'))
-    if (amount === 1) {
-      console.log(`1 module issue was found.`)
-    } else {
-      console.log((`${amount} module issues were found.`))
-    }
+    console.log((`${amount} module issues were found.`))
 
-    this._modules.forEach((mod) => console.log(`- ${mod}`))
+    this.modules.forEach(mod => console.log(`  - ${mod}`))
     console.log('')
   }
 
   /** Displays a message showing the issues with the fragments of code. */
   displayCode () {
-    const amount = this._code.length
+    const amount = this.code.length
 
     console.log(chalk.bold('Code'))
-    if (amount === 1) {
-      console.log(`1 code issue was found.`)
-    } else {
-      console.log((`${amount} code issues were found.`))
-    }
+    console.log((`${amount} code issue${amount === 1 ? ' was' : 's were'} found.`))
 
-    this._code.forEach((frag) => console.log(`- ${frag}`))
+    this.code.forEach(frag => console.log(`  - ${frag}`))
     console.log('')
   }
 
   /** Displays a message in the stderr showing errors during the analysis. */
   displayErrors () {
-    const amount = this._errors.length
+    const amount = this.errors.length
 
-    console.error(chalk.bold('Errors'))
-    if (amount === 1) {
-      console.error(`1 error was found analysing the project.`)
-    } else {
-      console.error(`${amount} erros were found analysing the project.`)
-    }
+    console.error(chalk.red(chalk.bold('Errors')))
+    console.error(chalk.red(`${amount} error${amount === 1 ? ' was' : 's were'} found analysing the project.`))
 
-    this._errors.forEach((err) => console.error(chalk.red(`- ${err}`)))
-    console.log('')
+    this.errors.forEach(err => console.error(chalk.red(`  - ${err}`)))
+    console.error('')
   }
 }
 
