@@ -1,10 +1,6 @@
 const AST = require('../project/ast')
-const {
-  declarationParser,
-  importParser,
-  isValidExportNamedDeclaration,
-  moduleExportParser
-} = require('./utils')
+const traverse = require('babel-traverse').default
+const { extractPath } = require('./utils')
 
 /**
  * Defines the relevant information for handling modules: the path to the
@@ -45,53 +41,74 @@ class Module {
 async function analyseFile (filePath, withES7, withJSX) {
   const parser = new AST(withES7, withJSX)
   const ast = await parser.build(filePath)
-  const isValidBody =
-      ast != null &&
-      ast.program != null &&
-      ast.program.body != null &&
-      Array.isArray(ast.program.body)
-
-  if (!isValidBody) {
-    // debugger
-    return new Module(filePath, [], false)
-  }
 
   const uses = []
   let isExported = false
 
-  // All the import/require nodes must be at the beginning of the file.
-  for (let element of ast.program.body) {
-    switch (element.type) {
-      case 'VariableDeclaration':
-        const req = declarationParser(element, filePath, withJSX)
-        if (req != null) uses.push(req)
-        break
+  const visitor = {
+    // Given a `VariableDeclaration`, it checks if it fulfills the
+    // [specifications](http://wiki.commonjs.org/wiki/Modules/1.1)  of a
+    // `require` call. Sadly, this implementation has two issues:
+    // - Due to the dynamic nature of JavaScript, we cannot check using static
+    //   analysis if the parameter of the require function is a `string` unless it
+    //   is a `StringLiteral`. This issue has no good solution.
+    // - If the `require` function is assigned to a different variable, and that
+    //   variable used to import the modules, it is not tracked.
+    VariableDeclaration (path) {
+      const declarations = path.get('declarations')
+      for (const declaration of declarations) {
+        if (declaration.isVariableDeclarator()) {
+          const init = declaration.get('init')
 
-      case 'ImportDeclaration':
-        const imp = importParser(element, filePath, withJSX)
-        if (imp != null) uses.push(imp)
-        break
+          if (init.isCallExpression()) {
+            const callee = init.get('callee')
+            const args = init.get('arguments')
 
-      case 'ExpressionStatement':
-        isExported = isExported || moduleExportParser(element)
-        break
-
-      case 'ExportNamedDeclaration':
-        if (!isValidExportNamedDeclaration(element)) {
-          const file = element.loc.filename
-          const start = element.loc.start
-          const end = element.loc.end
-          throw Error(`Invalid state detected at: ${file}:${start},${end}`)
+            if (callee.isExpression({ name: 'require' }) &&
+              args.length === 1 && args[0].isLiteral()) {
+              const arg = args[0].node.value
+              const req = extractPath(arg, filePath, withJSX)
+              if (req != null) uses.push(req)
+            }
+          }
         }
+      }
+    },
+    ImportDeclaration (path) {
+      const source = path.get('source')
 
-        isExported = true
-        break
-      case 'ExportDefaultDeclaration':
-      case 'ExportAllDeclaration':
-        isExported = true
-        break
+      if (source.isStringLiteral()) {
+        const value = source.node.value
+        const imp = extractPath(value, filePath, withJSX)
+        if (imp != null) uses.push(imp)
+      }
+    },
+    ExpressionStatement (path) {
+      const expression = path.get('expression')
+      if (expression.isAssignmentExpression()) {
+        const operator = expression.get('operator')
+        const left = expression.get('left')
+        if (operator.node === '=' && left.isMemberExpression()) {
+          if (left.get('object').isIdentifier({ name: 'module' }) &&
+            left.get('property').isIdentifier({ name: 'exports' })) {
+            isExported = true
+          }
+        }
+      }
+    },
+    ExportNamedDeclaration (path) {
+      isExported = true
+    },
+    ExportDefaultDeclaration (path) {
+      isExported = true
+    },
+    ExportAllDeclaration (path) {
+      isExported = true
     }
   }
+
+  traverse(ast, visitor)
+
   return new Module(filePath, uses, isExported)
 }
 
