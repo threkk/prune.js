@@ -1,6 +1,6 @@
 const fs = require('fs')
 const { promisify } = require('util')
-const { parse } = require('babylon')
+const { parse } = require('@babel/parser')
 
 const readFile = promisify(fs.readFile)
 

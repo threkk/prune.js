@@ -7,21 +7,14 @@
     "standard": "node_modules/.bin/standard 'src/**/*.js' 'test/**/*.js'",
     "test": "npm run standard && mocha 'test/**/*.js'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/threkk/prune.js.git"
-  },
+  "repository": "git+ssh://git@github.com/threkk/prune.js.git",
   "keywords": [
     "prune",
     "javascript",
     "dead",
     "code"
   ],
-  "author": {
-    "name": "Alberto Martinez de Murga Ramirez",
-    "email": "alberto@threkk.com",
-    "url": "https://threkk.com"
-  },
+  "author": "Alberto Martinez de Murga Ramirez <alberto@threkk.com> (https://threkk.com)",
   "license": "ISC",
   "private": true,
   "bin": {
@@ -32,9 +25,9 @@
   },
   "homepage": "https://github.com/threkk/prune.js#readme",
   "dependencies": {
+    "@babel/parser": "^7.1.0",
     "babel-traverse": "^6.26.0",
     "babel-types": "^6.26.0",
-    "babylon": "^6.17.0",
     "chalk": "^1.1.3",
     "commander": "^2.9.0",
     "depcheck": "^0.6.9",
@@ -52,5 +45,6 @@
     "jsdoc": "^3.4.3",
     "mocha": "^5.1.1",
     "standard": "^11.0.1"
-  }
+  },
+  "main": "index.js"
 }
