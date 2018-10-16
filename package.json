@@ -3,9 +3,7 @@
   "version": "0.0.1",
   "description": "Prune.js is a tool that helps you finding and deleting dead code.",
   "scripts": {
-    "gen-docs": "node_modules/.bin/jsdoc -c jsdoc.json",
-    "standard": "node_modules/.bin/standard 'src/**/*.js' 'test/**/*.js'",
-    "test": "npm run standard && mocha 'test/**/*.js'"
+    "standard": "node_modules/.bin/standard 'src/**/*.js' 'test/**/*.js'"
   },
   "repository": "git+ssh://git@github.com/threkk/prune.js.git",
   "keywords": [
@@ -40,10 +38,6 @@
     "node": ">=8.0.0"
   },
   "devDependencies": {
-    "chai": "^3.5.0",
-    "docdash": "^0.4.0",
-    "jsdoc": "^3.4.3",
-    "mocha": "^5.1.1",
     "standard": "^11.0.1"
   },
   "main": "index.js"
