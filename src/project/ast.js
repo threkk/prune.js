@@ -5,41 +5,33 @@ const { parse } = require('@babel/parser')
 const readFile = promisify(fs.readFile)
 
 /**
- * Generates an AST of the given JavaScript file using the Babel compiler.
+ * Generates a parser function with the given configuration. The parser will
+ * take a path
+ *
+ * @param {boolean} es7 - If the parser should enable `ES7` features.
+ * @param {boolean} jsx - If the parser should enable `JSX`.
+ * @return {Function} Parse function
  */
-class ASTParser {
-  /**
-   * @constructor
-   * @param {boolean} es7 - If the parser should enable `ES7` features.
-   * @param {boolean} jsx - If the parser should enable `JSX`.
-   */
-  constructor (es7 = false, jsx = false) {
-    const plugins = []
-    if (jsx) plugins.push('jsx')
-    if (es7) {
-      plugins.push('estree')
-      plugins.push('doExpressions')
-      plugins.push('decorators')
-    }
-
-    this.options = {
-      sourceType: 'module', // Enables the import/export statements.
-      ranges: true, // Add ranges to the nodes [node.start, node.end]
-      tokens: false, // Disables token listing.
-      plugins
-    }
+function createASTParser (es7 = false, jsx = false) {
+  const plugins = []
+  if (jsx) plugins.push('jsx')
+  if (es7) {
+    plugins.push('estree')
+    plugins.push('doExpressions')
+    plugins.push('decorators')
   }
 
-  /**
-   * Reads the file and executes the parser.
-   *
-   * @return {Promise} AST tree of the file.
-   * @throws TypeError Error if invalid AST.
-   */
-  async build (path) {
+  const options = {
+    sourceType: 'module', // Enables the import/export statements.
+    ranges: true, // Add ranges to the nodes [node.start, node.end]
+    tokens: false, // Disables token listing.
+    plugins
+  }
+
+  return async (path) => {
     const file = await readFile(path, 'utf-8')
-    return parse(file, this.options)
+    return parse(file, options)
   }
 }
 
-module.exports = ASTParser
+module.exports = createASTParser

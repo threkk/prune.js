@@ -1,4 +1,4 @@
-const AST = require('../project/ast')
+const createASTParser = require('../project/ast')
 const traverse = require('babel-traverse').default
 const { extractPath } = require('./utils')
 
@@ -39,8 +39,8 @@ class Module {
  * @throws {Error} If the AST could not be generated.
  */
 async function analyseFile (filePath, withES7, withJSX) {
-  const parser = new AST(withES7, withJSX)
-  const ast = await parser.build(filePath)
+  const parser = createASTParser(withES7, withJSX)
+  const ast = parser(filePath)
 
   const uses = []
   let isExported = false

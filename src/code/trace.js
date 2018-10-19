@@ -1,4 +1,4 @@
-const AST = require('../project/ast')
+const createASTParser = require('../project/ast')
 const parse = require('./parser')
 
 class Trace {
@@ -9,7 +9,8 @@ class Trace {
   }
 
   static create (filePath, withES7, withJSX) {
-    const ast = new AST(filePath, withES7, withJSX)
+    const ASTParser = createASTParser(withES7, withJSX)
+    const ast = ASTParser(filePath)
     const isValidBody =
       ast != null &&
       ast.ast != null &&
