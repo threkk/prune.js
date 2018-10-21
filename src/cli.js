@@ -2,8 +2,8 @@
 const pkg = require('../package.json')
 const program = require('commander')
 const { exit } = require('process')
+const { resolve } = require('path')
 
-const Config = require('./project/config')
 const ErrorReport = require('./project/report/error')
 const Logger = require('./project/logger')
 const Project = require('./project/project')
@@ -13,7 +13,12 @@ const DependenciesAnalyser = require('./dependencies/analyser')
 const ModulesAnalyser = require('./modules/analyser')
 
 // Default configuration.
-const config = new Config()
+const config = {
+  path: '.',
+  ignore: [],
+  es7: false,
+  jsx: false
+}
 
 // Initialise the logger.
 const logger = new Logger()
@@ -38,12 +43,13 @@ if (program.args.length < 1) {
 }
 
 config.path = program.args.pop()
+config.ignore.push(resolve(config.path, './node_modules'))
 
-if (program.es7) config.withES7 = true
-if (program.jsx) config.withJSX = true
+if (program.es7) config.es7 = true
+if (program.jsx) config.jsx = true
 if (program.ignore) {
   if (program.args.length > 0) {
-    config.ignoreDirs = program.args
+    program.args.forEach(arg => config.ignore.push(resolve(config.path, arg)))
   } else {
     const error = new ErrorReport('input', 'ignore flag enabled but no paths provided.')
     logger.report(error)
