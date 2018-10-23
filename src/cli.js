@@ -17,14 +17,15 @@ program
   .parse(process.argv)
 
 const { jsx, path, ignore } = program
+const noColor = Boolean(process.env.NO_COLOR) || false
 
 // Initialise the configuration.
 const config = {
   root: path,
   ignore: [...new Set(['node_modules', ...ignore])].map(route => resolve(path, route)),
   jsx: !!jsx,
-  logger: new Logger(),
-  noColor: Boolean(process.env.NO_COLOR) || false
+  logger: new Logger(noColor),
+  noColor
 }
 
 const project = new Project(config)
