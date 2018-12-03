@@ -23,10 +23,27 @@ class Project {
     console.log('')
   }
 
+  report (name, msg) {
+    this.config.logger.error(msg, name)
+  }
+
   async analyse (Analyser) {
+    const name = Analyser.getName()
     const analyser = new Analyser(this.config)
-    await analyser.start()
-    return this
+    const log = (msg) => this.report(name, msg)
+    console.log(`[•] Starting analyser: ${name}.`)
+    try {
+      await analyser.start(log)
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
+  async flush () {
+    if (!this.config.logger.hasErrors()) {
+      console.log('No errors found.')
+    }
+    this.config.logger.display()
   }
 }
 

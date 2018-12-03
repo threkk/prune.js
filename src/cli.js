@@ -5,6 +5,7 @@ const { resolve } = require('path')
 
 const Logger = require('./project/logger')
 const Project = require('./project/project')
+const Deps = require('./dependencies/analyser.js')
 
 // Sets the CLI.
 program
@@ -28,5 +29,13 @@ const config = {
   noColor
 }
 
-const project = new Project(config)
-project.analyse()
+const run = async () => {
+  const project = new Project(config)
+  await project.analyse(Deps)
+  await project.flush()
+}
+try {
+  run()
+} catch (e) {
+  console.log(e)
+}

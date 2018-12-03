@@ -29,8 +29,10 @@
     "chalk": "^1.1.3",
     "commander": "^2.9.0",
     "depcheck": "^0.6.9",
+    "ndb": "^1.0.36",
     "ora": "^1.2.0",
     "package-json-validator": "^0.6.1",
+    "react": "^16.6.3",
     "read-package-json": "^2.0.13",
     "underscore": "^1.8.3"
   },

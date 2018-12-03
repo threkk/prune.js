@@ -1,14 +1,15 @@
 class Logger {
-  constructor () {
+  constructor (noColor) {
     this.errors = []
     this.warns = []
+    this.noColor = noColor
   }
 
-  warn (message, type = 'ERROR') {
+  warn (message, type = 'OTHER') {
     this.warns.push({type, message})
   }
 
-  error (message, type = 'ERROR') {
+  error (message, type = 'OTHER') {
     this.errors.push({type, message})
   }
 
@@ -29,16 +30,13 @@ class Logger {
 
   display (warnings = false) {
     const show = ({ type, message }) => `[${type}] ${message}`
-    this.errors.map(tuple => show).forEach(msg => console.log(msg))
+
+    // TODO: Add (and disable) colors.
+    this.errors.map(tuple => show(tuple)).forEach(msg => console.log(`[ERROR]${msg}`))
     if (warnings) {
-      this.warns.map(tuple => show).forEach(msg => console.log(msg))
+      this.warns.map(tuple => show(tuple)).forEach(msg => console.log(`[WARN]${msg}`))
     }
   }
 }
-
-Logger.ERROR = 'ERROR'
-Logger.DEP = 'DEPENDENCY'
-Logger.MOD = 'MODULE'
-Logger.CODE = 'CODE'
 
 module.exports = Logger
