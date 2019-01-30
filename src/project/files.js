@@ -2,7 +2,6 @@ const fs = require('fs')
 
 const { extname, resolve } = require('path')
 const { promisify } = require('util')
-const { all } = Promise
 
 const stat = promisify(fs.stat)
 const readdir = promisify(fs.readdir)
@@ -31,14 +30,14 @@ async function extractFiles (path, ignored, extensions) {
       // Get all the elements in the directory.
       const items = await readdir(dir)
 
-      // Filter ignore or hidden elements and resolve the paths.
+      // Resolve the paths and filter ignore or hidden elements.
       const visibleItems = items
-        .filter(item => !isIgnored(item) && !isHidden(item))
         .map(item => resolve(dir, item))
+        .filter(item => !isIgnored(item) && !isHidden(item))
 
       // If it is a directory, add it to the list to check.
       // If it is a file, add it to the resolved paths.
-      await all(visibleItems.forEach(async itemPath => {
+      for (const itemPath of visibleItems) {
         try {
           const stats = await stat(itemPath)
           if (stats.isDirectory()) {
@@ -47,11 +46,13 @@ async function extractFiles (path, ignored, extensions) {
             files.push(itemPath)
           }
         } catch (e) {
-          // Do smth
+          // TODO: Do smth
+          console.error(e)
         }
-      }))
+      }
     } catch (e) {
-      // Do smth
+      // TODO: Do smth
+      console.error(e)
     }
   }
   return files
