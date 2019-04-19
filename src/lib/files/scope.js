@@ -17,7 +17,7 @@ const walker = require('acorn-walk')
  *  - Variables declared with var are global and hoisted.
  */
 class BodyScope {
-  constructor ({ glob = {}, local = {}, block = {} }) {
+  constructor ({ glob = {}, local = {}, block = {} } = {}) {
     this.glob = Object.assign({}, glob)
     this.local = Object.assign({}, local)
     this.block = Object.assign({}, block)
