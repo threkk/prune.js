@@ -45,11 +45,4 @@ export default class Project {
       console.log(e)
     }
   }
-
-  async flush() {
-    if (!logger.hasErrors()) {
-      console.log('No errors found.')
-    }
-    logger.display()
-  }
 }

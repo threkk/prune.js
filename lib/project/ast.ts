@@ -1,8 +1,8 @@
 import acorn from 'acorn'
-import jsxParser from 'acorn-jsx'
 import fs, { PathLike } from 'fs'
 import { promisify } from 'util'
 
+const jsxParser = require('acorn-jsx')
 const readFile = promisify(fs.readFile)
 
 /**

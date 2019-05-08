@@ -42,7 +42,6 @@ const run = async () => {
   const project = new Project(config)
   // await project.analyse(Deps)
   await project.analyse(Files)
-  await project.flush()
   log.display()
 }
 
