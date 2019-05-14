@@ -4,7 +4,7 @@ import { join, resolve } from 'path'
 
 /**
  * Extracts all the file paths from the project. Valid files depend on the
- * configuration. `node_modules` are always ignored.
+ * configuration. `node_modules` and .gitignore are always ignored.
  */
 export default async function extractFiles(
   path: string,
