@@ -1,17 +1,27 @@
-import acorn from 'acorn'
+import * as acorn from 'acorn'
 import fs, { PathLike } from 'fs'
 import { promisify } from 'util'
 
 const jsxParser = require('acorn-jsx')
 const readFile = promisify(fs.readFile)
 
+export interface FileContent {
+  path: PathLike
+  content: string
+}
+
+export async function loadFile(path: PathLike): Promise<FileContent> {
+  const content = await readFile(path, 'utf-8')
+  return { content, path }
+}
+
 /**
  * Generates a parser function with the given configuration. The parser will
  * take a path
  */
-export default function createASTParser(
+export function createASTParser(
   jsx: boolean = false
-): (path: PathLike) => Promise<acorn.Node> {
+): (path: FileContent) => acorn.Node {
   const options: acorn.Options = {
     sourceType: 'module', // Enables the import/export statements.
     ranges: true, // Add ranges to the nodes [node.start, node.end]
@@ -25,9 +35,11 @@ export default function createASTParser(
     parser = parser.extend(jsxParser())
   }
 
-  const parse: (path: PathLike) => Promise<acorn.Node> = async path => {
-    const file = await readFile(path, 'utf-8')
-    return parser.parse(file, { ...options, sourceFile: file })
+  const parse: (file: FileContent) => acorn.Node = file => {
+    return parser.parse(file.content, {
+      ...options,
+      sourceFile: <string>file.path
+    })
   }
   return parse
 }
