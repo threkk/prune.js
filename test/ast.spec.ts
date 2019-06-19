@@ -1,7 +1,6 @@
-const walker = require('acorn-walk')
 import { join } from 'path'
 import { createASTParser, loadFile } from './ast'
-const { inspect } = require('util')
+import { extractStatements } from './visitor/statements'
 
 const parser = createASTParser(false)
 const path = join(
@@ -11,9 +10,10 @@ const path = join(
 
 loadFile(path)
   .then(parser)
-  .then(ast => {
-    walker.fullAncestor(ast, (...args) => {
-      console.log(args)
+  .then(extractStatements)
+  .then(statements => {
+    statements.forEach(st => {
+      console.log(`Node: ${st.type} at ${st.loc.start.line}`)
     })
   })
   .catch(console.error)
