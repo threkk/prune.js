@@ -1,6 +1,11 @@
 const { createServer } = require('http')
 const { parse } = require('url')
 
+let port = 3000
+if (process.env.NODE_ENV === 'production') {
+  port = 80
+}
+
 function helloWorld(req, res) {
   const { query } = parse(req.url, true)
 
@@ -13,4 +18,4 @@ function helloWorld(req, res) {
 }
 
 const server = createServer(helloWorld)
-server.listen(3000)
+server.listen(port)
