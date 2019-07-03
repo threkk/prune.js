@@ -20,124 +20,132 @@ import { hash } from './call-graph'
 export enum Declarator {
   VAR,
   CONST,
-  LET
+  LET,
+  FUNC,
+  CLASS
 }
+
+export const UNDEFINED = Symbol('undefined')
+export const NULL = Symbol('null')
 
 export interface ScopeVariable {
   /** Variable name. */
-  readonly name: string
-  /** Variable type. */
-  readonly type: Declarator
-  /** Node. */
-  readonly node: Node
-  /** Node hash. */
-  readonly hash: string
+  readonly id: string
   /** If the variable is an import/require. */
   readonly isImport: boolean
   /** Location of the node. */
   readonly loc: SourceLocation
-  /** Statement node. */
-  readonly stat: Node
+  /** Declaration statement. */
+  readonly declarationSt: Node
   /** In case it is a module, the path or name of it. */
   readonly sourceModule?: string
+  /** Hash of the location to distinguish declarations with the same key. */
+  readonly hash: string
   /** Value guess in case it is a literal or similar. */
-  value?: string
+  value?: any
   /** Properties of the variable in case it is an object. */
   properites?: { [key: string]: ScopeVariable }
 }
 
-export interface ScopeProps {
-  glob: { [index: string]: ScopeVariable }
-  func: { [index: string]: ScopeVariable }
-  block: { [index: string]: ScopeVariable }
+export interface ScopeSetter {
+  key: string
+  value: ScopeVariable
+  declarator?: Declarator
 }
 
 export abstract class Scope {
-  glob: { [index: string]: ScopeVariable }
-  func: { [index: string]: ScopeVariable }
-  block: { [index: string]: ScopeVariable }
-  self: { [index: string]: ScopeVariable }
+  parent: Scope | null
+  current: { [index: string]: ScopeVariable }
 
-  get(key: string, self: boolean = false): ScopeVariable | null {
-    if (self) {
-      const value = this.self[key]
-      if (value) {
-        return value
-      }
-      return null
-    }
+  get(key: string): ScopeVariable | null {
+    const splitKey: string[] = key.split('.')
+    const value: ScopeVariable | null = splitKey.reduce(
+      (prevVal: ScopeVariable, currKey: string) =>
+        this.current[currKey] || prevVal,
+      null
+    )
 
-    return this.block[key] || this.func[key] || this.glob[key] || null
+    return value || this.parent.get(key) || null
   }
 
   getAll() {
     return {
-      ...this.glob,
-      ...this.func,
-      ...this.block,
-      ...this.self
+      ...this.parent.getAll(),
+      ...this.current
     }
   }
 
-  set(key: string, value: ScopeVariable, declarator?: Declarator): void {
-    switch (declarator) {
-      case Declarator.CONST:
-      case Declarator.VAR:
-        this.block[key] = value
-        break
-      case Declarator.VAR:
-      default:
-        this.func[key] = value
-        break
-    }
+  abstract add(props: ScopeSetter): void
+}
+
+export class GlobalScope extends Scope {
+  constructor() {
+    super()
+    this.parent = null
+    this.current = {}
+  }
+
+  add(props: ScopeSetter) {
+    this.current[props.key] = props.value
+  }
+
+  bootstrap() {
+    // TODO
   }
 }
 
 export class BlockScope extends Scope {
-  glob: { [index: string]: ScopeVariable }
-  func: { [index: string]: ScopeVariable }
-  block: { [index: string]: ScopeVariable }
-
-  constructor(props?: ScopeProps) {
+  constructor(public parent: Scope) {
     super()
+    this.current = {}
+  }
 
-    this.glob = props ? { ...props.glob } : {}
-    this.func = props ? { ...props.func, ...props.block } : {}
-    this.block = {}
+  add(props: ScopeSetter): void {
+    switch (props.declarator) {
+      case Declarator.CONST:
+      case Declarator.VAR:
+      case Declarator.CLASS:
+        this.current[props.key] = props.value
+        break
+      case Declarator.VAR:
+      case Declarator.FUNC:
+      default:
+        this.parent.add(props)
+        break
+    }
   }
 }
 
 export class FunctionScope extends Scope {
-  glob: { [index: string]: ScopeVariable }
-  func: { [index: string]: ScopeVariable }
-  block: { [index: string]: ScopeVariable }
-
-  constructor(props?: ScopeProps) {
+  constructor(public parent: Scope) {
     super()
-    this.glob = props ? { ...props.glob, ...props.func } : {}
-    this.func = {}
-    this.block = {}
+    this.current = {}
   }
 
-  bootstrap(decl: acorn.Node, st: acorn.Node): void {
-    const self: ScopeVariable = {
-      name: 'this',
-      type: Declarator.VAR,
-      node: decl,
-      hash: hash(decl),
-      isImport: false,
-      loc: decl.loc,
-      stat: st
-    }
-    const args: ScopeVariable = {
-      name: 'arguments',
-      type: Declarator.VAR,
-      node: null,
-      hash: null,
-      isImport: false,
-      loc: null,
-      stat: st
-    }
-    this.func = { this: self, arguments: args }
+  add(props: ScopeSetter): void {
+    this.current[props.key] = props.value
+  }
+
+  bootstrap(st: acorn.Node): void {
+    this.add({
+      key: 'this',
+      value: {
+        id: 'this',
+        isImport: false,
+        loc: st.loc,
+        declarationSt: st,
+        hash: hash(st)
+      }
+    })
+    this.add({
+      key: 'arguments',
+      value: {
+        id: 'arguments',
+        isImport: false,
+        loc: null,
+        declarationSt: st,
+        hash: hash(st)
+      }
+    })
   }
 }
