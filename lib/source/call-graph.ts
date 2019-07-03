@@ -1,19 +1,19 @@
-import {Node} from 'acorn'
-import {createHash, Hash} from 'crypto'
-import {Scope} from '../source/scope'
-import {GEdge, GNode} from '../util/graph'
+import { Node } from 'acorn'
+import { createHash, Hash } from 'crypto'
+import { Scope } from '../source/scope'
+import { GEdge, GNode } from '../util/graph'
 
 export enum Relationship {
-  PREVIOUS, // Destination is the previous node of source.
-  NEXT, // Destionation is the next node of source.
-  CALLE, // Source calling destination.
-  CALLED, // Source is called by destination.
-  PROP, // Porperty of source.
-  MEMBER, // Child of source.
-  RETURN, // Destionation is return of the source.
-  RESULT, // Destination is the result of the source.
-  ARG, // Source is argument, equivalent to dst.
-  PARAM // Dst is a parameter equivalent to source
+  PREVIOUS = 'PREVIOUS', // Destination is the previous node of source.
+  NEXT = 'NEXT', // Destionation is the next node of source.
+  CALLE = 'CALLEE', // Source calling destination.
+  CALLED = 'CALLED', // Source is called by destination.
+  PROP = 'PROP', // Porperty of source.
+  MEMBER = 'MEMBER', // Child of source.
+  RETURN = 'RETURN', // Destionation is return of the source.
+  RESULT = 'RESULT', // Destination is the result of the source.
+  ARG = 'ARG', // Source is argument, equivalent to dst.
+  PARAM = 'PARAM' // Dst is a parameter equivalent to source
 }
 
 export class StatementNode implements GNode {
