@@ -41,11 +41,11 @@ export interface ScopeVariable {
   readonly sourceModule?: string
   /** Hash of the location to distinguish declarations with the same key. */
   readonly hash: string
-  /** Value guess in case it is a literal or similar. */
-  value?: any
   /** Properties of the variable in case it is an object. */
-  properites?: { [key: string]: ScopeVariable }
+  properties: ScopeProperty
 }
+
+export type ScopeProperty = { [index: string]: ScopeProperty | ScopeVariable }
 
 export interface ScopeSetter {
   key: string
@@ -58,14 +58,27 @@ export abstract class Scope {
   current: { [index: string]: ScopeVariable }
 
   get(key: string): ScopeVariable | null {
-    const splitKey: string[] = key.split('.')
-    const value: ScopeVariable | null = splitKey.reduce(
-      (prevVal: ScopeVariable, currKey: string) =>
-        this.current[currKey] || prevVal,
+    const [base, ...properties] = key.split('.')
+
+    if (!this.current[base]) {
+      return this.parent.get(key) || null
+    }
+
+    const baseScope = this.current[base]
+    if (properties.length === 0) {
+      return baseScope
+    }
+
+    const value: ScopeVariable | null = properties.reduce(
+      (prevVal: ScopeVariable | ScopeProperty | null, currKey: string) => {
+        if (!prevVal) {
+          return null
+        }
+        return prevVal.properties[currKey]
+      },
       null
     )
-
-    return value || this.parent.get(key) || null
+    return value
   }
 
   getAll() {
@@ -134,7 +147,8 @@ export class FunctionScope extends Scope {
         isImport: false,
         loc: st.loc,
         declarationSt: st,
-        hash: hash(st)
+        hash: hash(st),
+        properties: {}
       }
     })
     this.add({
@@ -144,7 +158,8 @@ export class FunctionScope extends Scope {
         isImport: false,
         loc: null,
         declarationSt: st,
-        hash: hash(st)
+        hash: hash(st),
+        properties: {}
       }
     })
   }
