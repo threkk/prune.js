@@ -1,11 +1,20 @@
 import { PathLike } from 'fs'
 import { loadFile, createASTParser } from './ast'
 import { extractAllStatements } from './visitor/statements'
-import { StatementNode, Relation, Relationship } from './call-graph'
-import { Graph } from '../util/graph'
 import { FunctionScope, Scope, GlobalScope, BlockScope } from './scope'
 import { extractBlockStatements } from './visitor/blocks'
-import { registerHoisted } from './register/declaration'
+import {
+  Graph,
+  StatementNode,
+  Relation,
+  Relationship,
+  hash
+} from './call-graph'
+import {
+  registerHoisted,
+  registerDeclarations,
+  findIdentifiers
+} from './register/declaration'
 
 export async function buildGraph(path: PathLike): Promise<Graph> {
   const parse = createASTParser(false)
@@ -29,24 +38,22 @@ interface BuildGraphProps {
 function buildFuncGraph(props: BuildGraphProps): void {
   const scope = new FunctionScope(props.parent)
   registerHoisted({ st: props.ast, scope, graph: props.graph })
-  linkSequentialNodes({ scope, ...props })
-
   buildChildrenScope({ scope, ...props })
-  console.log(props.graph, scope)
+  linkNodes({ scope, ...props })
+  console.log(scope.get('obj2'))
 }
 
 interface BuildFuncGraphProps extends BuildGraphProps {
   scope: Scope
 }
 
-function linkSequentialNodes(props: BuildFuncGraphProps): void {
+function linkNodes(props: BuildFuncGraphProps): void {
   const statements = extractAllStatements(props.ast)
-  // Link nodes together: previous and next.
+
   let prevNode: StatementNode
   for (const st of statements) {
     const currentNode = new StatementNode(st, props.scope)
     props.graph.addNode(currentNode)
-
     if (prevNode) {
       props.graph.addEdge(
         new Relation(prevNode, currentNode, Relationship.NEXT)
@@ -62,17 +69,123 @@ function linkSequentialNodes(props: BuildFuncGraphProps): void {
 
 function buildChildrenScope(props: BuildFuncGraphProps) {
   const statements = extractBlockStatements(props.ast)
-  // Empty for now.
-  const scope = props.isFuncScope
-    ? new FunctionScope(props.parent)
-    : new BlockScope(props.parent)
 
   for (const st of statements) {
     // Add edges: find declarations or function calls.
     // If it has a block descendant
     // recursive call.
+    registerDeclarations({ st, scope: props.scope, graph: props.graph })
+
+    // Recursive call.
+    switch (st.type) {
+      case 'IfStatement':
+        buildChildrenScope({
+          graph: props.graph,
+          isFuncScope: false,
+          parent: props.scope,
+          ast: (st as any).consequent,
+          scope: new BlockScope(props.scope)
+        })
+
+        if ((st as any).alternate != null) {
+          buildChildrenScope({
+            graph: props.graph,
+            isFuncScope: false,
+            parent: props.scope,
+            ast: (st as any).alternate,
+            scope: new BlockScope(props.scope)
+          })
+        }
+        break
+      case 'SwitchStatement':
+        buildChildrenScope({
+          graph: props.graph,
+          isFuncScope: false,
+          parent: props.scope,
+          ast: (st as any).cases,
+          scope: new BlockScope(props.scope)
+        })
+        break
+      case 'TryStatement':
+        const { block, handler, finalizer } = st as any
+        buildChildrenScope({
+          graph: props.graph,
+          isFuncScope: false,
+          parent: props.scope,
+          ast: block,
+          scope: new BlockScope(props.scope)
+        })
+
+        if (handler != null) {
+          const newScope = new BlockScope(handler)
+          const ids = findIdentifiers(handler.param)
+
+          ids.forEach(id => {
+            newScope.add({
+              key: id,
+              value: {
+                id,
+                loc: st.loc,
+                hash: hash(st),
+                isImport: false,
+                properties: {},
+                declarationSt: st
+              }
+            })
+          })
+
+          buildChildrenScope({
+            graph: props.graph,
+            isFuncScope: false,
+            parent: props.scope,
+            ast: handler,
+            scope: newScope
+          })
+        }
+
+        if (finalizer != null) {
+          buildChildrenScope({
+            graph: props.graph,
+            isFuncScope: false,
+            parent: props.scope,
+            ast: finalizer,
+            scope: new BlockScope(props.scope)
+          })
+        }
+        break
+      case 'WhileStatement':
+        buildChildrenScope({
+          graph: props.graph,
+          isFuncScope: false,
+          parent: props.scope,
+          ast: (st as any).body,
+          scope: new BlockScope(props.scope)
+        })
+        break
+      case 'DoWhileStatement':
+        buildChildrenScope({
+          graph: props.graph,
+          isFuncScope: false,
+          parent: props.scope,
+          ast: (st as any).body,
+          scope: new BlockScope(props.scope)
+        })
+        break
+      case 'ForStatement':
+      case 'ForInStatement':
+      case 'ForOfStatement':
+        buildChildrenScope({
+          graph: props.graph,
+          isFuncScope: false,
+          parent: props.scope,
+          ast: (st as any).body,
+          scope: new BlockScope(props.scope)
+        })
+        break
+    }
   }
 }
 
-buildGraph('./examples/hoisting/hoisting.js')
 // buildGraph('./examples/sample-webserver/simple-webserver.js')
+// buildGraph('./examples/variable-declarations/index.js')
+buildGraph('./examples/object-examples/index.js')
