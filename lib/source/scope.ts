@@ -14,7 +14,7 @@
  * - The previous block variable are now local, block environment is clear.
  *  - Variables declared with var are global and hoisted.
  */
-import { Node, SourceLocation } from 'acorn'
+import { Node } from 'acorn'
 import { hash } from './call-graph'
 
 export enum Declarator {
@@ -33,8 +33,6 @@ export interface ScopeVariable {
   readonly id: string
   /** If the variable is an import/require. */
   readonly isImport: boolean
-  /** Location of the node. */
-  readonly loc: SourceLocation
   /** Declaration statement. */
   readonly declarationSt: Node
   /** In case it is a module, the path or name of it. */
@@ -43,6 +41,10 @@ export interface ScopeVariable {
   readonly hash: string
   /** Properties of the variable in case it is an object. */
   properties: { [index: string]: ScopeVariable }
+  /** If the value is callable. */
+  isCallable: boolean
+  /** Callable node. */
+  callable?: Node
 }
 
 export interface ScopeSetter {
@@ -100,6 +102,10 @@ export class GlobalScope extends Scope {
     this.current[props.key] = props.value
   }
 
+  get(key: string): ScopeVariable | null {
+    return this.current[key] || null
+  }
+
   bootstrap() {
     // TODO
   }
@@ -143,7 +149,7 @@ export class FunctionScope extends Scope {
       value: {
         id: 'this',
         isImport: false,
-        loc: st.loc,
+        isCallable: false,
         declarationSt: st,
         hash: hash(st),
         properties: {}
@@ -154,7 +160,7 @@ export class FunctionScope extends Scope {
       value: {
         id: 'arguments',
         isImport: false,
-        loc: null,
+        isCallable: false,
         declarationSt: st,
         hash: hash(st),
         properties: {}
