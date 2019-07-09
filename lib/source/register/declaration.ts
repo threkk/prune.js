@@ -1,5 +1,5 @@
 import { RegisterProps } from './interface'
-import { Declarator, ScopeVariable, Scope } from '../scope'
+import { Declarator, ScopeVariable } from '../scope'
 import { hash } from '../call-graph'
 import { sequentialVisitor } from '../visitor/statements'
 import walker = require('acorn-walk')
@@ -19,7 +19,7 @@ export function findIdentifiers(expr, side: Side = 'right'): string[] {
   walker.simple(
     expr,
     {
-      Pattern(node, acc) {
+      Pattern(node, acc: string[]) {
         if (node.type === 'Identifier') acc.push(node.name)
       }
     },
@@ -34,9 +34,10 @@ function findModuleFromDeclaration(expr): string {
   const cbs = {}
 
   if (expr.type === 'ImportDeclaration') {
-    cbs['ImportDeclaration'] = (node, acc) => acc.push(node.source.name)
+    cbs['ImportDeclaration'] = (node, acc: string[]) =>
+      acc.push(node.source.name)
   } else {
-    cbs['VariableDeclaration'] = (node, acc) => {
+    cbs['VariableDeclaration'] = (node, acc: string[]) => {
       if (
         node.callee.type === 'Identifier' &&
         node.callee.name === 'require' &&
@@ -112,7 +113,8 @@ export function registerDeclarations(props: RegisterProps): void {
         key: props.st.id.name,
         value: {
           id: props.st.id.name,
-          loc: props.st.loc,
+          isCallable: false,
+          callable: props.st,
           isImport: false,
           declarationSt: props.st,
           hash: hash(props.st),
@@ -142,13 +144,22 @@ export function registerDeclarations(props: RegisterProps): void {
           decl.init && decl.init.type === 'ObjectExpression'
             ? findProperties(decl.init, props)
             : {}
+
+        const isCallable =
+          (decl.init &&
+            (decl.init.type === 'FunctionExpression' ||
+              decl.init.type === 'ArrowFunctionExpression' ||
+              decl.init.type === 'ClassExpression')) ||
+          false
+
         ids.forEach(id =>
           props.scope.add({
             key: id,
             value: {
               id,
-              loc: props.st.loc,
               isImport: mod != null,
+              isCallable,
+              callable: isCallable ? decl.init : null,
               declarationSt: props.st,
               hash: hash(props.st),
               sourceModule: mod !== '' ? mod : '',
@@ -160,13 +171,13 @@ export function registerDeclarations(props: RegisterProps): void {
       })
       break
     case 'ImportDeclaration':
-      const ids = props.st.specifiers.map(sp => sp.local.name)
-      ids.forEach(id =>
+      const ids: string[] = props.st.specifiers.map(sp => sp.local.name)
+      ids.forEach((id: string) =>
         props.scope.add({
           key: id,
           value: {
             id,
-            loc: props.st.loc,
+            isCallable: false,
             isImport: true,
             declarationSt: props.st,
             hash: hash(props.st),
@@ -181,8 +192,9 @@ export function registerDeclarations(props: RegisterProps): void {
         key: props.st.id.name,
         value: {
           id: props.st.id.name,
-          loc: props.st.loc,
           isImport: false,
+          isCallable: true,
+          callable: props.st,
           declarationSt: props.st,
           hash: hash(props.st),
           properties: {}
@@ -192,6 +204,13 @@ export function registerDeclarations(props: RegisterProps): void {
     case 'ExpressionStatement':
       if (props.st.expression.type === 'AssignmentExpression') {
         const { left, right } = props.st.expression
+
+        const isCallable =
+          (right.init &&
+            (right.init.type === 'FunctionExpression' ||
+              right.init.type === 'ArrowFunctionExpression' ||
+              right.init.type === 'ClassExpression')) ||
+          false
 
         // Expression type: a.b
         if (left.type === 'MemberExpression') {
@@ -208,7 +227,8 @@ export function registerDeclarations(props: RegisterProps): void {
             if (variable) {
               variable.properties[lastProp] = {
                 id: lastProp,
-                loc: props.st.loc,
+                isCallable,
+                callable: isCallable ? props.st : null,
                 isImport: false,
                 declarationSt: props.st,
                 hash: hash(props.st),
@@ -230,14 +250,22 @@ export function registerHoisted(props: RegisterProps): void {
     {
       VariableDeclaration: node => {
         if (node.kind === 'var') {
+          const isCallable =
+            (node.init &&
+              (node.init.type === 'FunctionExpression' ||
+                node.init.type === 'ArrowFunctionExpression' ||
+                node.init.type === 'ClassExpression')) ||
+            false
+
           node.declarations.forEach(n =>
             props.scope.add({
               key: n.id.name,
               value: {
                 id: n.id.name,
-                loc: node.loc,
                 hash: hash(node),
                 isImport: false,
+                isCallable,
+                callable: isCallable ? node.init : null,
                 declarationSt: node,
                 properties: {}
               },
@@ -251,10 +279,11 @@ export function registerHoisted(props: RegisterProps): void {
           key: node.id.name,
           value: {
             id: node.id.name,
-            loc: node.loc,
             hash: hash(node),
             declarationSt: node,
             isImport: false,
+            isCallable: true,
+            callable: node,
             properties: {}
           }
         })

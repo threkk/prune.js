@@ -25,6 +25,7 @@ export async function buildGraph(path: PathLike): Promise<Graph> {
 
   buildFuncGraph({ graph, ast, parent: globalScope, isFuncScope: true })
 
+  console.log(graph, scope)
   return graph
 }
 
@@ -40,7 +41,6 @@ function buildFuncGraph(props: BuildGraphProps): void {
   registerHoisted({ st: props.ast, scope, graph: props.graph })
   buildChildrenScope({ scope, ...props })
   linkNodes({ scope, ...props })
-  console.log(scope.get('obj2'))
 }
 
 interface BuildFuncGraphProps extends BuildGraphProps {
@@ -125,10 +125,27 @@ function buildChildrenScope(props: BuildFuncGraphProps) {
               key: id,
               value: {
                 id,
-                loc: st.loc,
                 hash: hash(st),
                 isImport: false,
-                properties: {},
+                isCallable: false,
+                properties: {
+                  name: {
+                    properties: {},
+                    isCallable: false,
+                    declarationSt: st,
+                    isImport: false,
+                    hash: hash(st),
+                    id: 'name'
+                  },
+                  message: {
+                    properties: {},
+                    isCallable: false,
+                    declarationSt: st,
+                    isImport: false,
+                    hash: hash(st),
+                    id: 'name'
+                  }
+                },
                 declarationSt: st
               }
             })
@@ -187,5 +204,4 @@ function buildChildrenScope(props: BuildFuncGraphProps) {
 }
 
 // buildGraph('./examples/sample-webserver/simple-webserver.js')
-// buildGraph('./examples/variable-declarations/index.js')
-buildGraph('./examples/object-examples/index.js')
+buildGraph('./examples/variable-declarations/index.js')
