@@ -1,5 +1,5 @@
 import { RegisterProps } from './interface'
-import { Declarator, ScopeVariable, ScopeProperty, Scope } from '../scope'
+import { Declarator, ScopeVariable, Scope } from '../scope'
 import { hash } from '../call-graph'
 import { sequentialVisitor } from '../visitor/statements'
 import walker = require('acorn-walk')
@@ -72,32 +72,31 @@ function getPropertyChain(expr): string[] {
   return properties
 }
 
-function findProperties(expr, props): ScopeProperty {
-  const properties: { [index: string]: ScopeVariable | ScopeProperty } = {}
+function findProperties(expr, props): { [index: string]: ScopeVariable } {
+  const properties = {}
   if (expr.type === 'ObjectExpression') {
     for (const prop of expr.properties) {
       if (prop.type === 'Property') {
-        const key = prop.key.type === 'Literal' ? prop.key.value : prop.key.name
-        const value =
-          prop.value.type === 'ObjectExpression'
-            ? findProperties(prop.value, props)
-            : {
-                key,
-                value: {
-                  id: key,
-                  loc: props.st.loc,
-                  isImport: false,
-                  declarationSt: props.st,
-                  hash: hash(props.st),
-                  properties: {}
-                }
-              }
+        const key: string =
+          prop.key.type === 'Literal' ? prop.key.value : prop.key.name
+        const value = {
+          id: key,
+          loc: props.st.loc,
+          isImport: false,
+          declarationSt: props.st,
+          hash: hash(props.st),
+          properties:
+            prop.value.type === 'ObjectExpression'
+              ? findProperties(prop.value, props)
+              : {}
+        }
+
         properties[key] = value
       } else if (prop.type === 'SpreadElement') {
         if (prop.argument.type === 'Identifier') {
           const refObj = props.scope.get(prop.argument.name)
           Object.entries(refObj.properties).forEach(([key, value]) => {
-            properties[key] = value as ScopeProperty
+            properties[key] = value
           })
         }
       }
@@ -203,20 +202,17 @@ export function registerDeclarations(props: RegisterProps): void {
           if (baseScope) {
             const variable = properties.reduce((prev, curr) => {
               if (prev === null) return null
-              return prev[curr] || null
-            }, baseScope.properties)
+              return prev.properties[curr] || null
+            }, baseScope)
 
             if (variable) {
-              variable[lastProp] = {
-                key: lastProp,
-                value: {
-                  id: lastProp,
-                  loc: props.st.loc,
-                  isImporT: false,
-                  declarationSt: props.st,
-                  hash: hash(props.st),
-                  properties: {}
-                }
+              variable.properties[lastProp] = {
+                id: lastProp,
+                loc: props.st.loc,
+                isImport: false,
+                declarationSt: props.st,
+                hash: hash(props.st),
+                properties: {}
               }
             }
           }

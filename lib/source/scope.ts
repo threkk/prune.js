@@ -42,10 +42,8 @@ export interface ScopeVariable {
   /** Hash of the location to distinguish declarations with the same key. */
   readonly hash: string
   /** Properties of the variable in case it is an object. */
-  properties: ScopeProperty
+  properties: { [index: string]: ScopeVariable }
 }
-
-export type ScopeProperty = { [index: string]: ScopeProperty | ScopeVariable }
 
 export interface ScopeSetter {
   key: string
@@ -70,7 +68,7 @@ export abstract class Scope {
     }
 
     const value: ScopeVariable | null = properties.reduce(
-      (prevVal: ScopeVariable | ScopeProperty | null, currKey: string) => {
+      (prevVal: ScopeVariable | null, currKey: string) => {
         if (!prevVal) {
           return null
         }
