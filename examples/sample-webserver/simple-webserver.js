@@ -1,5 +1,5 @@
 const { createServer } = require('http')
-const { parse } = require('url')
+const url = require('url')
 
 let port = 3000
 if (process.env.NODE_ENV === 'production') {
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 function helloWorld(req, res) {
-  const { query } = parse(req.url, true)
+  const { query } = url.parse(req.url, true)
 
   let name = 'world'
   if (query.name) {
