@@ -1,6 +1,5 @@
 import { RegisterProps } from './interface'
 import { Declarator, ScopeVariable } from '../scope'
-import { hash } from '../call-graph'
 import { sequentialVisitor } from '../visitor/statements'
 import walker = require('acorn-walk')
 
@@ -85,7 +84,6 @@ function findProperties(expr, props): { [index: string]: ScopeVariable } {
           loc: props.st.loc,
           isImport: false,
           declarationSt: props.st,
-          hash: hash(props.st),
           properties:
             prop.value.type === 'ObjectExpression'
               ? findProperties(prop.value, props)
@@ -108,21 +106,6 @@ function findProperties(expr, props): { [index: string]: ScopeVariable } {
 
 export function registerDeclarations(props: RegisterProps): void {
   switch (props.st.type) {
-    case 'FunctionDeclaration':
-      props.scope.add({
-        key: props.st.id.name,
-        value: {
-          id: props.st.id.name,
-          isCallable: false,
-          callable: props.st,
-          isImport: false,
-          declarationSt: props.st,
-          hash: hash(props.st),
-          properties: {}
-        },
-        declarator: Declarator.FUNC
-      })
-      break
     case 'VariableDeclaration':
       let kind: Declarator
       switch (props.st.kind) {
@@ -159,9 +142,9 @@ export function registerDeclarations(props: RegisterProps): void {
               id,
               isImport: mod != null,
               isCallable,
+              isExport: false,
               callable: isCallable ? decl.init : null,
               declarationSt: props.st,
-              hash: hash(props.st),
               sourceModule: mod !== '' ? mod : '',
               properties
             },
@@ -179,8 +162,8 @@ export function registerDeclarations(props: RegisterProps): void {
             id,
             isCallable: false,
             isImport: true,
+            isExport: false,
             declarationSt: props.st,
-            hash: hash(props.st),
             sourceModule: props.st.source.name,
             properties: {}
           }
@@ -193,10 +176,10 @@ export function registerDeclarations(props: RegisterProps): void {
         value: {
           id: props.st.id.name,
           isImport: false,
+          isExport: false,
           isCallable: true,
           callable: props.st,
           declarationSt: props.st,
-          hash: hash(props.st),
           properties: {}
         },
         declarator: Declarator.CLASS
@@ -230,11 +213,27 @@ export function registerDeclarations(props: RegisterProps): void {
                 isCallable,
                 callable: isCallable ? props.st : null,
                 isImport: false,
+                isExport: false,
                 declarationSt: props.st,
-                hash: hash(props.st),
                 properties: {}
               }
             }
+          }
+        } else if (left.type === 'Identifier') {
+          const id = left.name
+          if (props.scope.get(id) === null) {
+            props.scope.add({
+              key: id,
+              value: {
+                id,
+                properties: {},
+                declarationSt: props.st,
+                isExport: false,
+                isImport: false,
+                isCallable,
+                callable: isCallable ? props.st : null
+              }
+            })
           }
         }
       }
@@ -262,8 +261,8 @@ export function registerHoisted(props: RegisterProps): void {
               key: n.id.name,
               value: {
                 id: n.id.name,
-                hash: hash(node),
                 isImport: false,
+                isExport: false,
                 isCallable,
                 callable: isCallable ? node.init : null,
                 declarationSt: node,
@@ -279,14 +278,29 @@ export function registerHoisted(props: RegisterProps): void {
           key: node.id.name,
           value: {
             id: node.id.name,
-            hash: hash(node),
             declarationSt: node,
             isImport: false,
+            isExport: false,
             isCallable: true,
             callable: node,
             properties: {}
           }
         })
+      }
+    },
+    sequentialVisitor
+  )
+}
+
+export function onCallStatement(ast, callback): void {
+  walker.simple(
+    ast,
+    {
+      CallExpression(node) {
+        callback(node)
+      },
+      NewExpression(node) {
+        callback(node)
       }
     },
     sequentialVisitor
