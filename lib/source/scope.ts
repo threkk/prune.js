@@ -15,7 +15,6 @@
  *  - Variables declared with var are global and hoisted.
  */
 import { Node } from 'acorn'
-import { hash } from './call-graph'
 
 export enum Declarator {
   VAR,
@@ -37,14 +36,16 @@ export interface ScopeVariable {
   readonly declarationSt: Node
   /** In case it is a module, the path or name of it. */
   readonly sourceModule?: string
-  /** Hash of the location to distinguish declarations with the same key. */
-  readonly hash: string
   /** Properties of the variable in case it is an object. */
   properties: { [index: string]: ScopeVariable }
   /** If the value is callable. */
   isCallable: boolean
   /** Callable node. */
   callable?: Node
+  /** If the variable is an export/module.exports. */
+  isExport: boolean
+  /** Export name. */
+  exportName?: string
 }
 
 export interface ScopeSetter {
@@ -107,7 +108,18 @@ export class GlobalScope extends Scope {
   }
 
   bootstrap() {
-    // TODO
+    this.add({
+      key: 'require',
+      value: {
+        id: 'require',
+        declarationSt: null,
+        isImport: false,
+        isCallable: true,
+        callable: null,
+        properties: null,
+        isExport: false
+      }
+    })
   }
 }
 
@@ -150,8 +162,8 @@ export class FunctionScope extends Scope {
         id: 'this',
         isImport: false,
         isCallable: false,
+        isExport: false,
         declarationSt: st,
-        hash: hash(st),
         properties: {}
       }
     })
@@ -160,9 +172,9 @@ export class FunctionScope extends Scope {
       value: {
         id: 'arguments',
         isImport: false,
+        isExport: false,
         isCallable: false,
         declarationSt: st,
-        hash: hash(st),
         properties: {}
       }
     })
