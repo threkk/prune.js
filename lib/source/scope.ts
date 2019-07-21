@@ -21,6 +21,7 @@ export enum Declarator {
   CONST,
   LET,
   FUNC,
+  ARROW,
   CLASS
 }
 
@@ -36,6 +37,8 @@ export interface ScopeVariable {
   readonly declarationSt: Node
   /** In case it is a module, the path or name of it. */
   readonly sourceModule?: string
+  /** If the variable has properties (object, function or class). */
+  hasProperties: boolean
   /** Properties of the variable in case it is an object. */
   properties: { [index: string]: ScopeVariable }
   /** If the value is callable. */
@@ -153,30 +156,5 @@ export class FunctionScope extends Scope {
 
   add(props: ScopeSetter): void {
     this.current[props.key] = props.value
-  }
-
-  bootstrap(st: acorn.Node): void {
-    this.add({
-      key: 'this',
-      value: {
-        id: 'this',
-        isImport: false,
-        isCallable: false,
-        isExport: false,
-        declarationSt: st,
-        properties: {}
-      }
-    })
-    this.add({
-      key: 'arguments',
-      value: {
-        id: 'arguments',
-        isImport: false,
-        isExport: false,
-        isCallable: false,
-        declarationSt: st,
-        properties: {}
-      }
-    })
   }
 }

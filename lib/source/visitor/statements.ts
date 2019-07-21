@@ -44,3 +44,18 @@ export function extractAllStatements(ast: Node): Node[] {
 
   return statements
 }
+
+export function onCallStatement(ast, callback): void {
+  walker.simple(
+    ast,
+    {
+      CallExpression(node) {
+        callback(node)
+      },
+      NewExpression(node) {
+        callback(node)
+      }
+    },
+    sequentialVisitor
+  )
+}

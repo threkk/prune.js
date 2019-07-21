@@ -1,15 +1,19 @@
 import { PathLike } from 'fs'
 import { loadFile, createASTParser } from './ast'
-import { extractAllStatements } from './visitor/statements'
-import { FunctionScope, Scope, GlobalScope, BlockScope } from './scope'
+import { extractAllStatements, onCallStatement } from './visitor/statements'
+import {
+  FunctionScope,
+  Scope,
+  GlobalScope,
+  BlockScope,
+  ScopeVariable
+} from './scope'
 import { extractBlockStatements } from './visitor/blocks'
 import { Graph, StatementNode, Relation, Relationship } from './call-graph'
-import {
-  registerHoisted,
-  registerDeclarations,
-  findIdentifiers,
-  onCallStatement
-} from './register/declaration'
+import { getDeclarationSetters } from './register/declaration'
+import { registerHoisted } from './register/hoisted'
+import { getArgumentsSettersFromDecl } from './register/arguments'
+import { findIdentifiers, getPropertyChain } from './visitor/expression'
 
 export async function buildGraph(path: PathLike): Promise<Graph> {
   const parse = createASTParser(false)
@@ -17,13 +21,10 @@ export async function buildGraph(path: PathLike): Promise<Graph> {
   const file = await loadFile(path)
   const ast = parse(file)
   const globalScope = new GlobalScope()
-  const scope = new FunctionScope(globalScope)
 
-  globalScope.bootstrap()
   buildFuncGraph({
     graph,
     ast,
-    parent: globalScope,
     scope: globalScope,
     isFuncScope: true
   })
@@ -33,7 +34,6 @@ export async function buildGraph(path: PathLike): Promise<Graph> {
 
 interface BuildGraphProps {
   graph: Graph
-  parent: Scope
   scope: Scope
   isFuncScope: boolean
   ast: acorn.Node
@@ -43,7 +43,6 @@ function buildFuncGraph(props: BuildGraphProps): void {
   registerHoisted({ st: props.ast, scope: props.scope, graph: props.graph })
   buildChildrenScope(props)
   linkNodes(props)
-  console.log(props.scope)
 }
 
 function linkNodes(props: BuildGraphProps): void {
@@ -73,7 +72,9 @@ function buildChildrenScope(props: BuildGraphProps) {
     // Add edges: find declarations or function calls.
     // If it has a block descendant
     // recursive call.
-    registerDeclarations({ st, scope: props.scope, graph: props.graph })
+    getDeclarationSetters(st, props.scope).forEach(setter =>
+      props.scope.add(setter)
+    )
 
     const baseVariable = {
       graph: props.graph,
@@ -94,6 +95,13 @@ function buildChildrenScope(props: BuildGraphProps) {
       case 'SwitchStatement':
         buildChildrenScope({ ...baseVariable, ast: (st as any).cases })
         break
+      case 'WhileStatement':
+      case 'DoWhileStatement':
+      case 'ForStatement':
+      case 'ForInStatement':
+      case 'ForOfStatement':
+        buildChildrenScope({ ...baseVariable, ast: (st as any).body })
+        break
       case 'TryStatement':
         const { block, handler, finalizer } = st as any
         buildChildrenScope({ ...baseVariable, ast: block })
@@ -106,12 +114,14 @@ function buildChildrenScope(props: BuildGraphProps) {
               key: id,
               value: {
                 id,
+                hasProperties: true,
                 isImport: false,
                 isExport: false,
                 isCallable: false,
                 properties: {
                   name: {
                     properties: {},
+                    hasProperties: false,
                     isCallable: false,
                     declarationSt: st,
                     isImport: false,
@@ -120,6 +130,7 @@ function buildChildrenScope(props: BuildGraphProps) {
                   },
                   message: {
                     properties: {},
+                    hasProperties: false,
                     isCallable: false,
                     declarationSt: st,
                     isImport: false,
@@ -139,40 +150,87 @@ function buildChildrenScope(props: BuildGraphProps) {
           buildChildrenScope({ ...baseVariable, ast: finalizer })
         }
         break
-      case 'WhileStatement':
-      case 'DoWhileStatement':
-      case 'ForStatement':
-      case 'ForInStatement':
-      case 'ForOfStatement':
-        buildChildrenScope({ ...baseVariable, ast: (st as any).body })
-        break
     }
 
     onCallStatement(st, node => {
-      let ast
-      if (node.callee.type === 'Identifier') {
-        const identifier = node.callee.name
-
-        const func = props.scope.get(identifier)
-
-        if (!func || !func.isCallable || !func.callable) {
-          console.log(`${identifier} not found.`)
-          return
-        }
-
-        buildFuncGraph({
-          ast: (func.callable as any).body,
-          graph: props.graph,
-          scope: new FunctionScope(props.scope),
-          parent: props.scope,
-          isFuncScope: true
-        })
+      // TODO:
+      // - Classes: super()
+      // - Classes: extends ParentClass
+      // - Callee : FunctionDeclaration and co.
+      // - Callee : ClassDeclaration
+      // - Arguments: parameters
+      // - Arguments: spread elements
+      const scopeProps = {
+        ast: null,
+        graph: props.graph,
+        scope: new FunctionScope(props.scope),
+        isFuncScope: true
       }
+
+      let func = null
+      switch (node.callee.type) {
+        case 'Identifier':
+          const identifier = node.callee.name
+          func = props.scope.get(identifier)
+          if (!func || !func.isCallable || !func.callable) {
+            console.log(`${identifier} not found.`)
+            return
+          }
+
+          if (func.callable.type !== 'Class') {
+            scopeProps.ast = (func.callable as any).body
+            if (func.callable.type === 'ArrowFunctionExpression') {
+              scopeProps.scope = props.scope as FunctionScope
+            }
+          }
+          break
+        case 'MemberExpression':
+          const [obj, ...properties] = getPropertyChain(node.callee.left)
+
+          const baseVar: ScopeVariable = props.scope.get(obj)
+          if (!baseVar) return
+          func = properties.reduce(
+            (prev: ScopeVariable, curr: string) =>
+              prev === null ? null : prev.properties[curr] || null,
+            baseVar
+          )
+
+          if (!func || !func.isCallable || !func.callable) {
+            console.log(`${[obj, ...properties]} not found.`)
+            return
+          }
+
+          scopeProps.ast = (func.callable as any).body
+          if (func.callable.type === 'ArrowFunctionExpression') {
+            scopeProps.scope = props.scope as FunctionScope
+          }
+          break
+        case 'ArrowFunctionExpression':
+          func = node
+          scopeProps.scope = props.scope as FunctionScope
+        // no break
+        case 'FunctionExpression':
+          scopeProps.ast = node.callee.body
+          buildFuncGraph(scopeProps)
+          break
+        default:
+        // Noop
+      }
+      getArgumentsSettersFromDecl(func).forEach(setter =>
+        scopeProps.scope.add(setter)
+      )
+
+      buildFuncGraph(scopeProps)
     })
   }
 }
 
-buildGraph('./examples/global-variables/index.js')
+buildGraph('./examples/calls/index.js')
+// buildGraph('./examples/parameters/index.js')
+// buildGraph('./examples/classes/index.js')
+// buildGraph('./examples/exports/index.js')
+// buildGraph('./examples/global-variables/index.js')
 // buildGraph('./examples/function-chaining/index.js')
+// buildGraph('./examples/function-types/index.js')
 // buildGraph('./examples/sample-webserver/simple-webserver.js')
 // buildGraph('./examples/variable-declarations/index.js')

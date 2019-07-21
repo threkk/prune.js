@@ -1,99 +1,46 @@
-import { RegisterProps } from './interface'
-import { Declarator, ScopeVariable } from '../scope'
-import { sequentialVisitor } from '../visitor/statements'
-import walker = require('acorn-walk')
+import { Declarator, ScopeVariable, ScopeSetter, Scope } from '../scope'
+import {
+  findIdentifiers,
+  findModuleFromDeclaration,
+  getPropertyChain
+} from '../visitor/expression'
 
-// Ignores one side of an assignment expression when looking for identifiers.
-type Side = 'left' | 'right'
-const ignoreSide = (side: Side) =>
-  walker.make(
-    {
-      AssignmentPattern: (node, st, c) => c(node[side], st, 'Pattern')
-    },
-    walker.base
-  )
+const isCallable: (expr: any) => boolean = (expr: any) =>
+  (expr.init &&
+    (expr.init.type === 'FunctionExpression' ||
+      expr.init.type === 'ArrowFunctionExpression' ||
+      expr.init.type === 'ClassExpression')) ||
+  false
+const hasProperties: (expr: any) => boolean = expr =>
+  expr.value.type === 'ObjectExpression'
 
-export function findIdentifiers(expr, side: Side = 'right'): string[] {
-  const acc: string[] = []
-  walker.simple(
-    expr,
-    {
-      Pattern(node, acc: string[]) {
-        if (node.type === 'Identifier') acc.push(node.name)
-      }
-    },
-    ignoreSide(side),
-    acc
-  )
-  return acc
-}
-
-function findModuleFromDeclaration(expr): string {
-  const acc: string[] = []
-  const cbs = {}
-
-  if (expr.type === 'ImportDeclaration') {
-    cbs['ImportDeclaration'] = (node, acc: string[]) =>
-      acc.push(node.source.name)
-  } else {
-    cbs['VariableDeclaration'] = (node, acc: string[]) => {
-      if (
-        node.callee.type === 'Identifier' &&
-        node.callee.name === 'require' &&
-        node.arguments.length === 1 &&
-        node.arguments[0].type === 'Literal'
-      ) {
-        acc.push(node.arguments[0].value as string)
-      }
-    }
-  }
-
-  walker.simple(expr, cbs, ignoreSide('left'), acc)
-  return acc[0]
-}
-
-function getPropertyChain(expr): string[] {
-  const properties = []
-  if (expr.type === 'MemberExpression') {
-    const { object, property } = expr
-
-    if (object.type !== 'Identifier') {
-      properties.push(...getPropertyChain(object))
-    } else {
-      properties.push(object.name)
-    }
-
-    if (property.type === 'Literal') {
-      properties.push(property.value)
-    } else if (property.type === 'Identifier' && !expr.computed) {
-      properties.push(property.name)
-    }
-  }
-  return properties
-}
-
-function findProperties(expr, props): { [index: string]: ScopeVariable } {
+function findProperties(
+  expr: any,
+  statement: any,
+  scope: Scope
+): { [index: string]: ScopeVariable } {
   const properties = {}
   if (expr.type === 'ObjectExpression') {
     for (const prop of expr.properties) {
       if (prop.type === 'Property') {
         const key: string =
           prop.key.type === 'Literal' ? prop.key.value : prop.key.name
-        const value = {
+        const value: ScopeVariable = {
           id: key,
-          loc: props.st.loc,
           isImport: false,
-          declarationSt: props.st,
-          properties:
-            prop.value.type === 'ObjectExpression'
-              ? findProperties(prop.value, props)
-              : {}
+          isCallable: isCallable(expr),
+          hasProperties: hasProperties(expr),
+          isExport: false,
+          declarationSt: statement,
+          properties: hasProperties(expr)
+            ? findProperties(prop.value, statement, scope)
+            : {}
         }
 
         properties[key] = value
-      } else if (prop.type === 'SpreadElement') {
+      } else if (prop.type === 'RestElement') {
         if (prop.argument.type === 'Identifier') {
-          const refObj = props.scope.get(prop.argument.name)
+          const refObj = scope.get(prop.argument.name)
           Object.entries(refObj.properties).forEach(([key, value]) => {
             properties[key] = value
           })
@@ -104,11 +51,12 @@ function findProperties(expr, props): { [index: string]: ScopeVariable } {
   return properties
 }
 
-export function registerDeclarations(props: RegisterProps): void {
-  switch (props.st.type) {
+export function getDeclarationSetters(st: any, scope: Scope): ScopeSetter[] {
+  const declarations: ScopeSetter[] = []
+  switch (st.type) {
     case 'VariableDeclaration':
       let kind: Declarator
-      switch (props.st.kind) {
+      switch (st.kind) {
         case 'const':
           kind = Declarator.CONST
           break
@@ -120,32 +68,26 @@ export function registerDeclarations(props: RegisterProps): void {
           kind = Declarator.VAR
       }
 
-      props.st.declarations.forEach(decl => {
+      st.declarations.forEach(decl => {
         const ids = findIdentifiers(decl)
         const mod = findModuleFromDeclaration(decl)
         const properties =
           decl.init && decl.init.type === 'ObjectExpression'
-            ? findProperties(decl.init, props)
+            ? findProperties(decl.init, decl, scope)
             : {}
 
-        const isCallable =
-          (decl.init &&
-            (decl.init.type === 'FunctionExpression' ||
-              decl.init.type === 'ArrowFunctionExpression' ||
-              decl.init.type === 'ClassExpression')) ||
-          false
-
         ids.forEach(id =>
-          props.scope.add({
+          declarations.push({
             key: id,
             value: {
               id,
               isImport: mod != null,
-              isCallable,
+              isCallable: isCallable(decl),
               isExport: false,
               callable: isCallable ? decl.init : null,
-              declarationSt: props.st,
+              declarationSt: st,
               sourceModule: mod !== '' ? mod : '',
+              hasProperties: hasProperties(decl),
               properties
             },
             declarator: kind
@@ -154,86 +96,92 @@ export function registerDeclarations(props: RegisterProps): void {
       })
       break
     case 'ImportDeclaration':
-      const ids: string[] = props.st.specifiers.map(sp => sp.local.name)
+      const ids: string[] = st.specifiers.map(sp => sp.local.name)
       ids.forEach((id: string) =>
-        props.scope.add({
+        declarations.push({
           key: id,
           value: {
             id,
             isCallable: false,
             isImport: true,
             isExport: false,
-            declarationSt: props.st,
-            sourceModule: props.st.source.name,
+            declarationSt: st,
+            sourceModule: st.source.name,
+            hasProperties: false,
             properties: {}
           }
         })
       )
       break
     case 'ClassDeclaration':
-      props.scope.add({
-        key: props.st.id.name,
+      // TODO: Add methods to properties.
+      declarations.push({
+        key: st.id.name,
         value: {
-          id: props.st.id.name,
+          id: st.id.name,
           isImport: false,
           isExport: false,
           isCallable: true,
-          callable: props.st,
-          declarationSt: props.st,
-          properties: {}
+          callable: st,
+          declarationSt: st,
+          properties: {},
+          hasProperties: true
         },
         declarator: Declarator.CLASS
       })
+      break
     case 'ExpressionStatement':
-      if (props.st.expression.type === 'AssignmentExpression') {
-        const { left, right } = props.st.expression
-
-        const isCallable =
-          (right.init &&
-            (right.init.type === 'FunctionExpression' ||
-              right.init.type === 'ArrowFunctionExpression' ||
-              right.init.type === 'ClassExpression')) ||
-          false
+      if (st.expression.type === 'AssignmentExpression') {
+        const { left, right } = st.expression
 
         // Expression type: a.b
         if (left.type === 'MemberExpression') {
           const [obj, ...properties] = getPropertyChain(left)
           const lastProp: string = properties.pop()
 
-          const baseScope = props.scope.get(obj)
-          if (baseScope) {
-            const variable = properties.reduce((prev, curr) => {
-              if (prev === null) return null
-              return prev.properties[curr] || null
-            }, baseScope)
+          const baseScope = scope.get(obj)
+          if (!baseScope) break
 
-            if (variable) {
-              variable.properties[lastProp] = {
-                id: lastProp,
-                isCallable,
-                callable: isCallable ? props.st : null,
-                isImport: false,
-                isExport: false,
-                declarationSt: props.st,
-                properties: {}
-              }
+          const variable = properties.reduce((prev, curr) => {
+            if (prev === null) return null
+            return prev.properties[curr] || null
+          }, baseScope)
+
+          if (!variable) break
+
+          // Add/update only if it does not exist or is callable.
+          if (!variable.properties[lastProp] || isCallable) {
+            variable.properties[lastProp] = {
+              id: lastProp,
+              isCallable: isCallable(right),
+              callable: isCallable(right) ? st : null,
+              isImport: false,
+              isExport: false,
+              declarationSt: st,
+              hasProperties: hasProperties(variable),
+              properties: {}
             }
           }
         } else if (left.type === 'Identifier') {
           const id = left.name
-          if (props.scope.get(id) === null) {
-            props.scope.add({
+          if (scope.get(id) === null) {
+            declarations.push({
               key: id,
               value: {
                 id,
+                hasProperties: false,
                 properties: {},
-                declarationSt: props.st,
+                declarationSt: st,
                 isExport: false,
                 isImport: false,
-                isCallable,
-                callable: isCallable ? props.st : null
+                isCallable: isCallable(right),
+                callable: isCallable(right) ? st : null
               }
             })
+          } else if (isCallable(right)) {
+            const variable = scope.get(id)
+            variable.isCallable = true
+            variable.callable = st
           }
         }
       }
@@ -241,68 +189,5 @@ export function registerDeclarations(props: RegisterProps): void {
     default:
     // console.debug(`Found ${props.st.type}, skipping...`)
   }
-}
-
-export function registerHoisted(props: RegisterProps): void {
-  walker.simple(
-    props.st,
-    {
-      VariableDeclaration: node => {
-        if (node.kind === 'var') {
-          const isCallable =
-            (node.init &&
-              (node.init.type === 'FunctionExpression' ||
-                node.init.type === 'ArrowFunctionExpression' ||
-                node.init.type === 'ClassExpression')) ||
-            false
-
-          node.declarations.forEach(n =>
-            props.scope.add({
-              key: n.id.name,
-              value: {
-                id: n.id.name,
-                isImport: false,
-                isExport: false,
-                isCallable,
-                callable: isCallable ? node.init : null,
-                declarationSt: node,
-                properties: {}
-              },
-              declarator: Declarator.VAR
-            })
-          )
-        }
-      },
-      FunctionDeclaration: node => {
-        props.scope.add({
-          key: node.id.name,
-          value: {
-            id: node.id.name,
-            declarationSt: node,
-            isImport: false,
-            isExport: false,
-            isCallable: true,
-            callable: node,
-            properties: {}
-          }
-        })
-      }
-    },
-    sequentialVisitor
-  )
-}
-
-export function onCallStatement(ast, callback): void {
-  walker.simple(
-    ast,
-    {
-      CallExpression(node) {
-        callback(node)
-      },
-      NewExpression(node) {
-        callback(node)
-      }
-    },
-    sequentialVisitor
-  )
+  return declarations
 }
