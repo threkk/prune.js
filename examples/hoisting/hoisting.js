@@ -1,5 +1,11 @@
 foo()
 
+bar()
+
+export function bar() {
+  console.log('bar')
+}
+
 function foo() {
   console.log('foo')
   function bar() {
