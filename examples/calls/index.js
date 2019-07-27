@@ -1,9 +1,11 @@
-function f (a, b, ...c) {}
+function f (a, b, { c }, ...d) {
+  console.log(a, b, c, d)
+}
 
-const v = 1
-const w = 2
-const x = 3
-const y = { a: 1 }
-const z = () => () => {}
+const v = 'd2'
+const w = 'd1'
+const x = { c: 'c' }
+const y = 'b'
+const z = () => () => 'a'
 
 f(z()(), y, x, w, v)
