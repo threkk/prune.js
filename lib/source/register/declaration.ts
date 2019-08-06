@@ -5,14 +5,14 @@ import {
   getPropertyChain
 } from '../visitor/expression'
 
-const isCallable: (expr: any) => boolean = (expr: any) =>
-  (expr.init &&
-    (expr.init.type === 'FunctionExpression' ||
-      expr.init.type === 'ArrowFunctionExpression' ||
-      expr.init.type === 'ClassExpression')) ||
+const isCallable: (expr: any) => boolean = expr =>
+  expr.type === 'FunctionExpression' ||
+  expr.type === 'ArrowFunctionExpression' ||
+  expr.type === 'ClassExpression' ||
   false
+
 const hasProperties: (expr: any) => boolean = expr =>
-  expr.value.type === 'ObjectExpression'
+  expr.type === 'ObjectExpression'
 
 function findProperties(
   expr: any,
@@ -28,11 +28,11 @@ function findProperties(
         const value: ScopeVariable = {
           id: key,
           isImport: false,
-          isCallable: isCallable(expr),
-          hasProperties: hasProperties(expr),
+          isCallable: isCallable(prop.value),
+          hasProperties: hasProperties(prop.value),
           isExport: false,
           declarationSt: statement,
-          properties: hasProperties(expr)
+          properties: hasProperties(prop.value)
             ? findProperties(prop.value, statement, scope)
             : {}
         }
@@ -68,7 +68,7 @@ export function getDeclarationSetters(st: any, scope: Scope): ScopeSetter[] {
           kind = Declarator.VAR
       }
 
-      st.declarations.forEach(decl => {
+      st.declarations.forEach((decl: any) => {
         const ids = findIdentifiers(decl)
         const mod = findModuleFromDeclaration(decl)
         const properties =
@@ -82,7 +82,7 @@ export function getDeclarationSetters(st: any, scope: Scope): ScopeSetter[] {
             value: {
               id,
               isImport: mod != null,
-              isCallable: isCallable(decl),
+              isCallable: isCallable(decl.init),
               isExport: false,
               callable: isCallable ? decl.init : null,
               declarationSt: st,
@@ -96,7 +96,7 @@ export function getDeclarationSetters(st: any, scope: Scope): ScopeSetter[] {
       })
       break
     case 'ImportDeclaration':
-      const ids: string[] = st.specifiers.map(sp => sp.local.name)
+      const ids: string[] = st.specifiers.map((sp: any) => sp.local.name)
       ids.forEach((id: string) =>
         declarations.push({
           key: id,

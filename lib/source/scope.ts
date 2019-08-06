@@ -61,8 +61,11 @@ export abstract class Scope {
   parent: Scope | null
   current: { [index: string]: ScopeVariable }
 
-  get(key: string): ScopeVariable | null {
-    const [base, ...properties] = key.split('.')
+  get(key: string | string[]): ScopeVariable | null {
+    let base: string
+    let properties: string[]
+    if (Array.isArray(key)) [base, ...properties] = key
+    else (key as string).split('.')
 
     if (!this.current[base]) {
       return this.parent.get(key) || null
@@ -75,9 +78,9 @@ export abstract class Scope {
 
     const value: ScopeVariable | null = properties.reduce(
       (prevVal: ScopeVariable | null, currKey: string) => {
-        if (!prevVal) {
-          return null
-        }
+        if (!prevVal) return null
+        if (currKey === 'prototype') return prevVal
+
         return prevVal.properties[currKey]
       },
       null
@@ -99,7 +102,18 @@ export class GlobalScope extends Scope {
   constructor() {
     super()
     this.parent = null
-    this.current = {}
+    this.current = {
+      require: {
+        id: 'require',
+        declarationSt: null,
+        isImport: false,
+        isCallable: true,
+        callable: null,
+        properties: null,
+        isExport: false,
+        hasProperties: false
+      }
+    }
   }
 
   add(props: ScopeSetter) {
@@ -108,21 +122,6 @@ export class GlobalScope extends Scope {
 
   get(key: string): ScopeVariable | null {
     return this.current[key] || null
-  }
-
-  bootstrap() {
-    this.add({
-      key: 'require',
-      value: {
-        id: 'require',
-        declarationSt: null,
-        isImport: false,
-        isCallable: true,
-        callable: null,
-        properties: null,
-        isExport: false
-      }
-    })
   }
 }
 

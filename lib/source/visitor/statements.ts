@@ -45,14 +45,14 @@ export function extractAllStatements(ast: Node): Node[] {
   return statements
 }
 
-export function onCallStatement(ast, callback): void {
+export function onCallStatement(ast: any, callback): void {
   walker.simple(
     ast,
     {
-      CallExpression(node) {
+      CallExpression(node: any) {
         callback(node)
       },
-      NewExpression(node) {
+      NewExpression(node: any) {
         callback(node)
       }
     },

@@ -9,11 +9,14 @@ import {
   ScopeVariable
 } from './scope'
 import { extractBlockStatements } from './visitor/blocks'
-import { Graph, StatementNode, Relation, Relationship } from './call-graph'
+import { Graph, StatementNode } from './call-graph'
 import { getDeclarationSetters } from './register/declaration'
 import { registerHoisted } from './register/hoisted'
 import { getArgumentsSettersFromDecl } from './register/arguments'
 import { findIdentifiers, getPropertyChain } from './visitor/expression'
+import { linkVarWrite } from './linker/read-write'
+import { LinkProps } from './linker/interfaces'
+import { linkPropsWrite } from './linker/read-write-properties'
 
 export async function buildGraph(path: PathLike): Promise<Graph> {
   const parse = createASTParser(false)
@@ -29,6 +32,7 @@ export async function buildGraph(path: PathLike): Promise<Graph> {
     isFuncScope: true
   })
 
+  console.log(graph)
   return graph
 }
 
@@ -48,21 +52,22 @@ function buildFuncGraph(props: BuildGraphProps): void {
 function linkNodes(props: BuildGraphProps): void {
   const statements = extractAllStatements(props.ast)
 
-  let prevNode: StatementNode
-  for (const st of statements) {
-    const currentNode = new StatementNode(st, props.scope)
+  statements.forEach(st => {
+    const currentNode = new StatementNode({
+      scope: props.scope,
+      node: st,
+      isTerminal: false,
+      isDeclaration: false
+    })
     props.graph.addNode(currentNode)
-    if (prevNode) {
-      props.graph.addEdge(
-        new Relation(prevNode, currentNode, Relationship.NEXT)
-      )
-
-      props.graph.addEdge(
-        new Relation(currentNode, prevNode, Relationship.PREVIOUS)
-      )
+    const args: LinkProps = {
+      statement: st,
+      graph: props.graph,
+      scope: props.scope
     }
-    prevNode = currentNode
-  }
+    linkVarWrite(args)
+    linkPropsWrite(args)
+  })
 }
 
 function buildChildrenScope(props: BuildGraphProps) {
@@ -152,7 +157,7 @@ function buildChildrenScope(props: BuildGraphProps) {
         break
     }
 
-    onCallStatement(st, node => {
+    onCallStatement(st, (node: any) => {
       // TODO:
       // - Classes: super()
       // - Classes: extends ParentClass
@@ -167,12 +172,13 @@ function buildChildrenScope(props: BuildGraphProps) {
         isFuncScope: true
       }
 
-      let func = null
+      let func: ScopeVariable = null
       switch (node.callee.type) {
         case 'Identifier':
           const identifier = node.callee.name
           func = props.scope.get(identifier)
           if (!func || !func.isCallable || !func.callable) {
+            console.log(func)
             console.log(`${identifier} not found.`)
             return
           }
@@ -185,18 +191,11 @@ function buildChildrenScope(props: BuildGraphProps) {
           }
           break
         case 'MemberExpression':
-          const [obj, ...properties] = getPropertyChain(node.callee.left)
-
-          const baseVar: ScopeVariable = props.scope.get(obj)
-          if (!baseVar) return
-          func = properties.reduce(
-            (prev: ScopeVariable, curr: string) =>
-              prev === null ? null : prev.properties[curr] || null,
-            baseVar
-          )
+          const properties = getPropertyChain(node.callee.left)
+          func = props.scope.get(properties)
 
           if (!func || !func.isCallable || !func.callable) {
-            console.log(`${[obj, ...properties]} not found.`)
+            console.log(`${node.calee.left} not found.`)
             return
           }
 
@@ -206,7 +205,6 @@ function buildChildrenScope(props: BuildGraphProps) {
           }
           break
         case 'ArrowFunctionExpression':
-          func = node
           scopeProps.scope = props.scope as FunctionScope
         // no break
         case 'FunctionExpression':
@@ -216,6 +214,7 @@ function buildChildrenScope(props: BuildGraphProps) {
         default:
         // Noop
       }
+
       getArgumentsSettersFromDecl(func).forEach(setter =>
         scopeProps.scope.add(setter)
       )
@@ -226,11 +225,3 @@ function buildChildrenScope(props: BuildGraphProps) {
 }
 
 buildGraph('./examples/calls/index.js')
-// buildGraph('./examples/parameters/index.js')
-// buildGraph('./examples/classes/index.js')
-// buildGraph('./examples/exports/index.js')
-// buildGraph('./examples/global-variables/index.js')
-// buildGraph('./examples/function-chaining/index.js')
-// buildGraph('./examples/function-types/index.js')
-// buildGraph('./examples/sample-webserver/simple-webserver.js')
-// buildGraph('./examples/variable-declarations/index.js')

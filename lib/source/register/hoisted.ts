@@ -1,4 +1,4 @@
-import { RegisterProps } from './interface'
+import { RegisterProps } from './interfaces'
 import { Declarator } from '../scope'
 import { sequentialVisitor } from '../visitor/statements'
 
@@ -27,6 +27,7 @@ export function registerHoisted(props: RegisterProps): void {
                 isCallable,
                 callable: isCallable ? node.init : null,
                 declarationSt: node,
+                hasProperties: false,
                 properties: {}
               },
               declarator: Declarator.VAR
@@ -44,6 +45,7 @@ export function registerHoisted(props: RegisterProps): void {
             isExport: false,
             isCallable: true,
             callable: node,
+            hasProperties: false,
             properties: {}
           }
         })
@@ -61,6 +63,7 @@ export function registerHoisted(props: RegisterProps): void {
               isExport: false,
               declarationSt: props.st,
               sourceModule: props.st.source.name,
+              hasProperties: false,
               properties: {}
             }
           })
