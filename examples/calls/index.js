@@ -9,3 +9,6 @@ const y = 'b'
 const z = () => () => 'a'
 
 f(z()(), y, x, w, v)
+
+;const iff = (function () { return 'iff' })()
+;((str) => console.log(str))(iff)
