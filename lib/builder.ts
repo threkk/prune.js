@@ -9,7 +9,7 @@ import {
   ScopeVariable
 } from './scope'
 import { extractBlockStatements } from './visitor/blocks'
-import { Graph, StatementNode } from './call-graph'
+import { Graph, StatementNode } from './graph'
 import { getDeclarationSetters } from './register/declaration'
 import { registerHoisted } from './register/hoisted'
 import { getArgumentsSettersFromDecl } from './register/arguments'
@@ -18,10 +18,10 @@ import { linkVarWrite } from './linker/read-write'
 import { LinkProps } from './linker/interfaces'
 import { linkPropsWrite } from './linker/read-write-properties'
 
-export async function buildGraph(path: PathLike): Promise<Graph> {
+export function buildGraph(path: PathLike): Graph {
   const parse = createASTParser(false)
   const graph = new Graph()
-  const file = await loadFile(path)
+  const file = loadFile(path)
   const ast = parse(file)
   const globalScope = new GlobalScope()
 
@@ -32,7 +32,6 @@ export async function buildGraph(path: PathLike): Promise<Graph> {
     isFuncScope: true
   })
 
-  console.log(graph)
   return graph
 }
 
@@ -223,5 +222,3 @@ function buildChildrenScope(props: BuildGraphProps) {
     })
   }
 }
-
-buildGraph('./examples/calls/index.js')

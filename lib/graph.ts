@@ -1,6 +1,6 @@
 import { Node } from 'acorn'
 import { createHash, Hash } from 'crypto'
-import { Scope } from '../source/scope'
+import { Scope } from './scope'
 
 export enum Relationship {
   CALL = 'CALL', // Source calls the destination.

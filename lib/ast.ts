@@ -1,17 +1,15 @@
 import * as acorn from 'acorn'
-import { readFile, PathLike } from 'fs'
-import { promisify } from 'util'
+import { readFileSync, PathLike } from 'fs'
 
 const jsxParser = require('acorn-jsx')
-const rf = promisify(readFile)
 
 export interface FileContent {
   path: PathLike
   content: string
 }
 
-export async function loadFile(path: PathLike): Promise<FileContent> {
-  const content = await rf(path, 'utf-8')
+export function loadFile(path: PathLike): FileContent {
+  const content = readFileSync(path, 'utf-8')
   return { content, path }
 }
 

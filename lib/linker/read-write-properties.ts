@@ -1,6 +1,6 @@
 import { LinkProps } from './interfaces'
 import { getPropertyChain } from '../visitor/expression'
-import { Relationship } from '../call-graph'
+import { Relationship } from '../graph'
 import { sequentialVisitor } from '../visitor/statements'
 
 const walker = require('acorn-walk')

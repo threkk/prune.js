@@ -1,4 +1,4 @@
-import { Relationship } from '../call-graph'
+import { Relationship } from '../graph'
 import { findIdentifiers } from '../visitor/expression'
 import { LinkProps } from './interfaces'
 
