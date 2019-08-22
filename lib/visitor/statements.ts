@@ -1,5 +1,8 @@
-const walker = require('acorn-walk')
 import { Node } from 'acorn'
+import { ScopeSetter, ScopeVariable, Scope } from '../scope'
+import { getPropertyChain } from './expression'
+
+const walker = require('acorn-walk')
 
 const storeStatement: (node: Node, st: Node[]) => void = (
   node: Node,
@@ -45,17 +48,81 @@ export function extractAllStatements(ast: Node): Node[] {
   return statements
 }
 
-export function onCallStatement(ast: any, callback): void {
+function getCallee(node: any, scope: Scope): ScopeVariable {
+  let func: ScopeVariable = null
+  switch (node.callee.type) {
+    case 'Identifier':
+      const identifier = node.callee.name
+      func = scope.get(identifier)
+      if (!func || !func.isCallable || !func.callable) {
+        console.debug(`${identifier} not found.`)
+        return null
+      }
+      return func
+    case 'MemberExpression':
+      const properties = getPropertyChain(node.callee.left)
+      func = scope.get(properties)
+
+      if (!func || !func.isCallable || !func.callable) {
+        console.debug(`${node.calee.left} not found.`)
+        return null
+      }
+      return func
+  }
+  return func
+}
+
+export function onCallStatement(
+  ast: any,
+  scope: Scope,
+  callback: (err: Error, node: any, func?: ScopeVariable) => void
+): void {
   walker.simple(
     ast,
     {
       CallExpression(node: any) {
-        callback(node)
+        const callee = getCallee(node, scope)
+        callback(null, node, callee)
       },
       NewExpression(node: any) {
-        callback(node)
+        const callee = getCallee(node, scope)
+        callback(null, node, callee)
       }
     },
     sequentialVisitor
   )
+}
+
+export function createErrorSetter(id: string, st: any): ScopeSetter {
+  return {
+    key: id,
+    value: {
+      id,
+      hasProperties: true,
+      isImport: false,
+      isExport: false,
+      isCallable: false,
+      properties: {
+        name: {
+          properties: {},
+          hasProperties: false,
+          isCallable: false,
+          declarationSt: st,
+          isImport: false,
+          isExport: false,
+          id: 'name'
+        },
+        message: {
+          properties: {},
+          hasProperties: false,
+          isCallable: false,
+          declarationSt: st,
+          isImport: false,
+          isExport: false,
+          id: 'name'
+        }
+      },
+      declarationSt: st
+    }
+  }
 }

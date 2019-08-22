@@ -1,6 +1,10 @@
 import { PathLike } from 'fs'
 import { loadFile, createASTParser } from './ast'
-import { extractAllStatements, onCallStatement } from './visitor/statements'
+import {
+  extractAllStatements,
+  onCallStatement,
+  createErrorSetter
+} from './visitor/statements'
 import {
   FunctionScope,
   Scope,
@@ -13,7 +17,7 @@ import { Graph, StatementNode } from './graph'
 import { getDeclarationSetters } from './register/declaration'
 import { registerHoisted } from './register/hoisted'
 import { getArgumentsSettersFromDecl } from './register/arguments'
-import { findIdentifiers, getPropertyChain } from './visitor/expression'
+import { findIdentifiers } from './visitor/expression'
 import { linkVarWrite } from './linker/read-write'
 import { LinkProps } from './linker/interfaces'
 import { linkPropsWrite } from './linker/read-write-properties'
@@ -44,7 +48,7 @@ interface BuildGraphProps {
 
 function buildFuncGraph(props: BuildGraphProps): void {
   registerHoisted({ st: props.ast, scope: props.scope, graph: props.graph })
-  buildChildrenScope(props)
+  buildScope(props)
   linkNodes(props)
 }
 
@@ -69,7 +73,7 @@ function linkNodes(props: BuildGraphProps): void {
   })
 }
 
-function buildChildrenScope(props: BuildGraphProps) {
+function buildScope(props: BuildGraphProps) {
   const statements = extractBlockStatements(props.ast)
 
   for (const st of statements) {
@@ -90,135 +94,87 @@ function buildChildrenScope(props: BuildGraphProps) {
     // Recursive call.
     switch (st.type) {
       case 'IfStatement':
-        buildChildrenScope({ ...baseVariable, ast: (st as any).consequent })
+        buildScope({ ...baseVariable, ast: (st as any).consequent })
 
         if ((st as any).alternate != null) {
-          buildChildrenScope({ ...baseVariable, ast: (st as any).alternate })
+          buildScope({ ...baseVariable, ast: (st as any).alternate })
         }
         break
       case 'SwitchStatement':
-        buildChildrenScope({ ...baseVariable, ast: (st as any).cases })
+        buildScope({ ...baseVariable, ast: (st as any).cases })
         break
       case 'WhileStatement':
       case 'DoWhileStatement':
       case 'ForStatement':
       case 'ForInStatement':
       case 'ForOfStatement':
-        buildChildrenScope({ ...baseVariable, ast: (st as any).body })
+        buildScope({ ...baseVariable, ast: (st as any).body })
         break
       case 'TryStatement':
         const { block, handler, finalizer } = st as any
-        buildChildrenScope({ ...baseVariable, ast: block })
+        buildScope({ ...baseVariable, ast: block })
 
         if (handler != null) {
-          const ids = findIdentifiers(handler.param)
           const newScope = new BlockScope(props.scope)
-          ids.forEach(id => {
-            newScope.add({
-              key: id,
-              value: {
-                id,
-                hasProperties: true,
-                isImport: false,
-                isExport: false,
-                isCallable: false,
-                properties: {
-                  name: {
-                    properties: {},
-                    hasProperties: false,
-                    isCallable: false,
-                    declarationSt: st,
-                    isImport: false,
-                    isExport: false,
-                    id: 'name'
-                  },
-                  message: {
-                    properties: {},
-                    hasProperties: false,
-                    isCallable: false,
-                    declarationSt: st,
-                    isImport: false,
-                    isExport: false,
-                    id: 'name'
-                  }
-                },
-                declarationSt: st
-              }
-            })
+          findIdentifiers(handler.param).forEach(id => {
+            newScope.add(createErrorSetter(id, st))
           })
 
-          buildChildrenScope({ ...baseVariable, scope: newScope, ast: handler })
+          buildScope({ ...baseVariable, scope: newScope, ast: handler })
         }
 
         if (finalizer != null) {
-          buildChildrenScope({ ...baseVariable, ast: finalizer })
+          buildScope({ ...baseVariable, ast: finalizer })
         }
         break
     }
 
-    onCallStatement(st, (node: any) => {
-      // TODO:
-      // - Classes: super()
-      // - Classes: extends ParentClass
-      // - Callee : FunctionDeclaration and co.
-      // - Callee : ClassDeclaration
-      // - Arguments: parameters
-      // - Arguments: spread elements
-      const scopeProps = {
-        ast: null,
-        graph: props.graph,
-        scope: new FunctionScope(props.scope),
-        isFuncScope: true
-      }
+    onCallStatement(
+      st,
+      props.scope,
+      (_: Error, node: any, func: ScopeVariable) => {
+        // TODO:
+        // - Classes: super()
+        // - Classes: extends ParentClass
+        // - Callee : FunctionDeclaration and co.
+        // - Callee : ClassDeclaration
+        // - Arguments: parameters
+        // - Arguments: spread elements
+        const scopeProps = {
+          ast: null,
+          graph: props.graph,
+          scope: new FunctionScope(props.scope),
+          isFuncScope: true
+        }
 
-      let func: ScopeVariable = null
-      switch (node.callee.type) {
-        case 'Identifier':
-          const identifier = node.callee.name
-          func = props.scope.get(identifier)
-          if (!func || !func.isCallable || !func.callable) {
-            console.log(func)
-            console.log(`${identifier} not found.`)
-            return
-          }
-
-          if (func.callable.type !== 'Class') {
-            scopeProps.ast = (func.callable as any).body
-            if (func.callable.type === 'ArrowFunctionExpression') {
-              scopeProps.scope = props.scope as FunctionScope
+        switch (node.callee.type) {
+          case 'Identifier':
+          case 'MemberExpression':
+            if (func.callable.type !== 'Class') {
+              scopeProps.ast = (func.callable as any).body
+              if (func.callable.type === 'ArrowFunctionExpression') {
+                scopeProps.scope = props.scope as FunctionScope
+              }
             }
-          }
-          break
-        case 'MemberExpression':
-          const properties = getPropertyChain(node.callee.left)
-          func = props.scope.get(properties)
+            break
 
-          if (!func || !func.isCallable || !func.callable) {
-            console.log(`${node.calee.left} not found.`)
-            return
-          }
-
-          scopeProps.ast = (func.callable as any).body
-          if (func.callable.type === 'ArrowFunctionExpression') {
+          case 'ArrowFunctionExpression':
             scopeProps.scope = props.scope as FunctionScope
-          }
-          break
-        case 'ArrowFunctionExpression':
-          scopeProps.scope = props.scope as FunctionScope
-        // no break
-        case 'FunctionExpression':
-          scopeProps.ast = node.callee.body
-          buildFuncGraph(scopeProps)
-          break
-        default:
-        // Noop
+          // no break
+          case 'FunctionExpression':
+            scopeProps.ast = node.callee.body
+            buildFuncGraph(scopeProps)
+            break
+          default:
+          // Noop
+        }
+
+        getArgumentsSettersFromDecl(func).forEach(setter =>
+          scopeProps.scope.add(setter)
+        )
+
+        buildFuncGraph(scopeProps)
       }
-
-      getArgumentsSettersFromDecl(func).forEach(setter =>
-        scopeProps.scope.add(setter)
-      )
-
-      buildFuncGraph(scopeProps)
-    })
+    )
   }
 }

@@ -1,5 +1,5 @@
 import { Scope } from '../scope'
-import { Graph } from '../call-graph'
+import { Graph } from '../graph'
 
 export interface LinkProps {
   statement: any
