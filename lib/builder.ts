@@ -21,6 +21,7 @@ import { findIdentifiers } from './visitor/expression'
 import { linkVarWrite } from './linker/read-write'
 import { LinkProps } from './linker/interfaces'
 import { linkPropsWrite } from './linker/read-write-properties'
+import { linkCallExpression } from './linker/functions'
 
 export function buildGraph(path: PathLike): Graph {
   const parse = createASTParser(false)
@@ -48,8 +49,8 @@ interface BuildGraphProps {
 
 function buildFuncGraph(props: BuildGraphProps): void {
   registerHoisted({ st: props.ast, scope: props.scope, graph: props.graph })
-  buildScope(props)
   linkNodes(props)
+  buildScope(props)
 }
 
 function linkNodes(props: BuildGraphProps): void {
@@ -70,6 +71,7 @@ function linkNodes(props: BuildGraphProps): void {
     }
     linkVarWrite(args)
     linkPropsWrite(args)
+    linkCallExpression(args)
   })
 }
 

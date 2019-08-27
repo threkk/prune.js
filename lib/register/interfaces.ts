@@ -1,5 +1,5 @@
 import { Scope } from '../scope'
-import { Graph } from '../call-graph'
+import { Graph } from '../graph'
 import { Node } from 'acorn'
 
 type N = Node & any

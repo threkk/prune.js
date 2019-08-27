@@ -5,7 +5,8 @@ import { readdirSync } from 'fs'
 import Project from '../lib/project'
 import { inspect } from 'util'
 
-const basePath: string = resolve(join(__dirname, '../test/validation/'))
+// FIXME: Change for a parameterised path.
+const basePath: string = resolve(join(__dirname, '../../test/validation/'))
 
 const validationProjects = readdirSync(basePath, {
   withFileTypes: true
