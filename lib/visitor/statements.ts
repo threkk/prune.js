@@ -92,37 +92,3 @@ export function onCallStatement(
     sequentialVisitor
   )
 }
-
-export function createErrorSetter(id: string, st: any): ScopeSetter {
-  return {
-    key: id,
-    value: {
-      id,
-      hasProperties: true,
-      isImport: false,
-      isExport: false,
-      isCallable: false,
-      properties: {
-        name: {
-          properties: {},
-          hasProperties: false,
-          isCallable: false,
-          declarationSt: st,
-          isImport: false,
-          isExport: false,
-          id: 'name'
-        },
-        message: {
-          properties: {},
-          hasProperties: false,
-          isCallable: false,
-          declarationSt: st,
-          isImport: false,
-          isExport: false,
-          id: 'name'
-        }
-      },
-      declarationSt: st
-    }
-  }
-}

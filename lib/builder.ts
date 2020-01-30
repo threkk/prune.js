@@ -1,17 +1,11 @@
 import { PathLike } from 'fs'
-import { loadFile, createASTParser } from './ast'
+import { loadFile, createScopeManager } from './ast'
 import {
   extractAllStatements,
   onCallStatement,
   createErrorSetter
 } from './visitor/statements'
-import {
-  FunctionScope,
-  Scope,
-  GlobalScope,
-  BlockScope,
-  ScopeVariable
-} from './scope'
+import { FunctionScope, Scope, BlockScope, ScopeVariable } from './scope'
 import { extractBlockStatements } from './visitor/blocks'
 import { Graph, StatementNode } from './graph'
 import { getDeclarationSetters } from './register/declaration'
@@ -22,20 +16,37 @@ import { linkVarWrite } from './linker/read-write'
 import { LinkProps } from './linker/interfaces'
 import { linkPropsWrite } from './linker/read-write-properties'
 import { linkCallExpression } from './linker/functions'
+import { traverse } from 'estraverse'
 
 export function buildGraph(path: PathLike): Graph {
-  const parse = createASTParser(false)
+  const parse = createScopeManager(false)
   const graph = new Graph()
   const file = loadFile(path)
   const ast = parse(file)
-  const globalScope = new GlobalScope()
+  const scope = ast.globalScope
 
-  buildFuncGraph({
-    graph,
-    ast,
-    scope: globalScope,
-    isFuncScope: true
+  console.log('==== Global Scopes:')
+  console.log(ast.globalScope)
+
+  const nodes = []
+  traverse(scope.block, {
+    enter: function(node) {
+      if (/Statement|Declaration/.test(node.type)) {
+        nodes.push([node.type, node.loc.start.line, node.loc.end.line])
+        if (/Function/.test(node.type)) this.skip()
+      }
+    }
   })
+
+  console.log(1)
+  console.log(nodes)
+  console.log(2)
+  // buildFuncGraph({
+  //   graph,
+  //   ast,
+  //   scope: globalScope,
+  //   isFuncScope: true
+  // })
 
   return graph
 }
@@ -58,7 +69,6 @@ function linkNodes(props: BuildGraphProps): void {
 
   statements.forEach(st => {
     const currentNode = new StatementNode({
-      scope: props.scope,
       node: st,
       isTerminal: false,
       isDeclaration: false

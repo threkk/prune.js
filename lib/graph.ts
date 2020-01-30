@@ -1,6 +1,5 @@
 import { Node } from 'acorn'
 import { createHash, Hash } from 'crypto'
-import { Scope } from './scope'
 
 export enum Relationship {
   CALL = 'CALL', // Source calls the destination.
@@ -15,21 +14,18 @@ export enum Relationship {
 
 interface StatementNodeProps {
   node: Node
-  scope: Scope
   isTerminal: boolean
   isDeclaration: boolean
 }
 export class StatementNode {
   public id: string
   public node: Node
-  public scope: Scope
   public isTerminal: boolean
   public isDeclaration: boolean
 
   constructor(props: StatementNodeProps) {
     this.id = hash(props.node)
     this.node = props.node
-    this.scope = props.scope
     this.isTerminal = props.isTerminal
     this.isDeclaration = props.isDeclaration
   }

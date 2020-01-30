@@ -1,8 +1,8 @@
-import { PathLike, lstatSync } from 'fs'
-import { extractFiles, getPackageJson } from './files'
-import { resolve, join, extname } from 'path'
-import { buildGraph } from './builder'
-import { Graph } from './graph'
+import {PathLike, lstatSync} from 'fs'
+import {extractFiles, getPackageJson} from './files'
+import {resolve, join, extname} from 'path'
+import {buildGraph} from './builder'
+import {Graph} from './graph'
 
 export default class Project {
   private root: string
@@ -13,7 +13,7 @@ export default class Project {
 
   constructor(root: string, ignore?: string[]) {
     this.root = root
-    this.ignore = ignore != null ? ignore : []
+    this.ignore = ignore ?? []
     this.paths = []
     this.dependencies = []
     this.entryPoints = []
@@ -34,20 +34,17 @@ export default class Project {
       // Search for a package.json and populate dependencies and entry points
       // with the contents of bin and main.
       const pkg = getPackageJson(this.root)
-      if (pkg != null) {
-        if (pkg.dependencies != null)
-          this.dependencies.push(...Object.keys(pkg.dependencies))
+      if (pkg?.dependencies != null)
+        this.dependencies.push(...Object.keys(pkg.dependencies))
 
-        if (pkg.bin != null)
-          this.entryPoints.push(
-            ...Object.values(pkg.bin as { [key: string]: string }).map(entry =>
-              resolve(join(this.root, entry))
-            )
-          )
+      if (pkg?.bin != null)
+        this.entryPoints.push(
+          ...Object.values(pkg.bin as {[key: string]: string})
+            .map(entry => resolve(join(this.root, entry)))
+        )
 
-        if (pkg.main != null)
-          this.entryPoints.push(resolve(join(this.root, pkg.main)))
-      }
+      if (pkg?.main != null)
+        this.entryPoints.push(resolve(join(this.root, pkg.main)))
 
       // Retrieve all files
       const files = extractFiles(this.root, this.ignore, ['js'])

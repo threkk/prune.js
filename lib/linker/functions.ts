@@ -1,16 +1,13 @@
 import { Relationship } from '../graph'
 import { LinkProps } from './interfaces'
-import { findIdentifiers, getPropertyChain } from '../visitor/expression'
+import { getPropertyChain } from '../visitor/expression'
 
 export function linkCallExpression(props: LinkProps): void {
-  if (
-    props.statement.type != null &&
-    props.statement.type === 'ExpressionStatement' &&
-    props.statement.expression.type === 'CallExpression'
-  ) {
+  if (props.statement?.expression?.type === 'CallExpression') {
+    //
+    // Callee
+    //
     const callee = props.statement.expression.callee
-
-    console.log(`Spotted ${callee.type}`)
     switch (callee.type) {
       case 'Identifier': {
         const id = callee.name
@@ -45,5 +42,11 @@ export function linkCallExpression(props: LinkProps): void {
       default:
       // TODO: Not implemented yet.
     }
+
+    //
+    // Arguments
+    //
+    const args = props.statement.expression.arguments
+    console.log('Args:', args)
   }
 }

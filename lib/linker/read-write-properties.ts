@@ -7,8 +7,7 @@ const walker = require('acorn-walk')
 
 export function linkPropsRead(props: LinkProps) {
   if (
-    props.statement.type != null &&
-    props.statement.type === 'ExpressionStatement'
+    props.statement?.type === 'ExpressionStatement'
   ) {
     const expr =
       props.statement.expression.type === 'AssignmentExpression'
@@ -38,12 +37,7 @@ export function linkPropsRead(props: LinkProps) {
 }
 
 export function linkPropsWrite(props: LinkProps) {
-  if (
-    props.statement.type != null &&
-    props.statement.type === 'ExpressionStatement' &&
-    props.statement.expression.type === 'AssignmentExpression' &&
-    props.statement.expression.left.type === 'MemberExpression'
-  ) {
+  if (props.statement?.expression?.left?.type === 'MemberExpression') {
     const { left } = props.statement.expression
 
     const [obj, ...properties] = getPropertyChain(left)

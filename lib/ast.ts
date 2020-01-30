@@ -1,7 +1,8 @@
-import * as acorn from 'acorn'
 import { readFileSync, PathLike } from 'fs'
+import { analyze, ScopeManager } from 'eslint-scope'
 
-const jsxParser = require('acorn-jsx')
+import acorn = require('acorn')
+import jsxParser = require('acorn-jsx')
 
 export interface FileContent {
   path: PathLike
@@ -17,9 +18,9 @@ export function loadFile(path: PathLike): FileContent {
  * Generates a parser function with the given configuration. The parser will
  * take a path
  */
-export function createASTParser(
+export function createScopeManager(
   jsx: boolean = false
-): (path: FileContent) => acorn.Node {
+): (path: FileContent) => ScopeManager {
   const options: acorn.Options = {
     sourceType: 'module', // Enables the import/export statements.
     ranges: true, // Add ranges to the nodes [node.start, node.end]
@@ -33,10 +34,15 @@ export function createASTParser(
     parser = parser.extend(jsxParser())
   }
 
-  const parse: (file: FileContent) => acorn.Node = file => {
-    return parser.parse(file.content, {
+  const parse: (file: FileContent) => ScopeManager = file => {
+    const ast = parser.parse(file.content, {
       ...options,
-      sourceFile: <string>file.path
+      sourceFile: file.path as string
+    })
+
+    return analyze(ast, {
+      ecmaVersion: 10, // Matching versions.
+      ignoreEval: true // Could be enabled if considered.
     })
   }
   return parse
