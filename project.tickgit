@@ -1,0 +1,8 @@
+goal "Standarise the project structure" {
+    description = "Current version is the fork of a fork. All the changes need
+    to be pushed back to master"
+
+    task "Set TypeScript version to 3.7" {
+        status = "pending"
+    }
+}
