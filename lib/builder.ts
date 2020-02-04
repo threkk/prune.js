@@ -1,10 +1,6 @@
 import { PathLike } from 'fs'
 import { loadFile, createScopeManager } from './ast'
-import {
-  extractAllStatements,
-  onCallStatement,
-  createErrorSetter
-} from './visitor/statements'
+import { extractAllStatements, onCallStatement } from './visitor/statements'
 import { FunctionScope, Scope, BlockScope, ScopeVariable } from './scope'
 import { extractBlockStatements } from './visitor/blocks'
 import { Graph, StatementNode } from './graph'
@@ -129,7 +125,7 @@ function buildScope(props: BuildGraphProps) {
         if (handler != null) {
           const newScope = new BlockScope(props.scope)
           findIdentifiers(handler.param).forEach(id => {
-            newScope.add(createErrorSetter(id, st))
+            // newScope.add(createErrorSetter(id, st))
           })
 
           buildScope({ ...baseVariable, scope: newScope, ast: handler })

@@ -27,34 +27,25 @@
   "dependencies": {
     "@types/eslint-scope": "^3.7.0",
     "@types/estraverse": "0.0.6",
-    "@types/jest": "^24.0.18",
-    "@types/node": "^11.13.22",
-    "acorn": "^6.3.0",
-    "acorn-jsx": "^5.0.2",
-    "acorn-walk": "^6.2.0",
-    "chalk": "^2.4.2",
-    "commander": "^2.20.1",
+    "@types/jest": "^25.1.1",
+    "@types/node": "^13.7.0",
+    "acorn": "^7.1.0",
+    "acorn-jsx": "^5.1.0",
+    "acorn-walk": "^7.0.0",
+    "chalk": "^3.0.0",
+    "commander": "^4.1.1",
     "eslint-scope": "^5.0.0",
     "estraverse": "^4.3.0",
-    "globby": "^9.2.0",
-    "logform": "^2.1.2",
-    "typescript": "^3.7.0-dev.20191004",
+    "globby": "^11.0.0",
+    "typescript": "^3.7.0",
     "winston": "^3.2.1"
   },
   "engines": {
     "node": ">=8.0.0"
   },
   "devDependencies": {
-    "eslint-plugin-typescript": "^0.14.0",
-    "jest": "^24.9.0",
-    "rimraf": "^2.7.1",
-    "ts-jest": "^24.1.0",
-    "typescript-eslint-parser": "^22.0.0"
-  },
-  "standard": {
-    "parser": "typescript-eslint-parser",
-    "plugins": [
-      "typescript"
-    ]
+    "jest": "^25.1.0",
+    "rimraf": "^3.0.1",
+    "ts-jest": "^25.2.0"
   }
 }

@@ -1,5 +1,5 @@
 import { Node } from 'acorn'
-import { ScopeSetter, ScopeVariable, Scope } from '../scope'
+import { ScopeVariable, Scope } from '../scope'
 import { getPropertyChain } from './expression'
 
 const walker = require('acorn-walk')
