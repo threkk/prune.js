@@ -14,7 +14,7 @@ const validationProjects = readdirSync(basePath, {
   .map(dir => resolve(join(basePath, dir.name)))
   .reduce((prev, curr) => {
     const project = new Project(curr)
-    prev[curr] = project.init().generateGraphs()
+    prev[curr] = project.generateGraphs()
     return prev
   }, {})
 

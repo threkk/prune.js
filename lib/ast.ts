@@ -1,7 +1,7 @@
 import { readFileSync, PathLike } from 'fs'
 import { analyze, ScopeManager } from 'eslint-scope'
 
-import acorn = require('acorn')
+import acorn from 'acorn'
 import jsxParser = require('acorn-jsx')
 
 export interface FileContent {

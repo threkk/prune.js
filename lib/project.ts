@@ -1,8 +1,8 @@
-import {PathLike, lstatSync} from 'fs'
-import {extractFiles, getPackageJson} from './files'
-import {resolve, join, extname} from 'path'
-import {buildGraph} from './builder'
-import {Graph} from './graph'
+import { PathLike, lstatSync } from 'fs'
+import { extractFiles, getPackageJson } from './files'
+import { resolve, join, extname } from 'path'
+import { buildGraph } from './builder'
+import { Graph } from './graph'
 
 export default class Project {
   private root: string
@@ -17,9 +17,7 @@ export default class Project {
     this.paths = []
     this.dependencies = []
     this.entryPoints = []
-  }
 
-  public init(): Project {
     // This method works with both single files and folders
     const stats = lstatSync(this.root)
 
@@ -39,8 +37,9 @@ export default class Project {
 
       if (pkg?.bin != null)
         this.entryPoints.push(
-          ...Object.values(pkg.bin as {[key: string]: string})
-            .map(entry => resolve(join(this.root, entry)))
+          ...Object.values(pkg.bin as { [key: string]: string }).map(entry =>
+            resolve(join(this.root, entry))
+          )
         )
 
       if (pkg?.main != null)
@@ -50,7 +49,6 @@ export default class Project {
       const files = extractFiles(this.root, this.ignore, ['js'])
       this.paths.push(...files.map(f => f as string))
     }
-    return this
   }
 
   public generateGraphs(): Graph[] {

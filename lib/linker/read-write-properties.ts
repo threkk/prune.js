@@ -6,9 +6,7 @@ import { sequentialVisitor } from '../visitor/statements'
 const walker = require('acorn-walk')
 
 export function linkPropsRead(props: LinkProps) {
-  if (
-    props.statement?.type === 'ExpressionStatement'
-  ) {
+  if (props.statement?.type === 'ExpressionStatement') {
     const expr =
       props.statement.expression.type === 'AssignmentExpression'
         ? props.statement.expression.right

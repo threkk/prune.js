@@ -19,7 +19,7 @@ program
     '-i, --ignore <paths>',
     'excludes the following folders',
     (val: string) => val.split(','),
-    ['node_modules']
+    ['node_modules', '.git']
   )
   .parse(process.argv)
 
@@ -28,7 +28,5 @@ const { path, ignore } = program
 // Initialise the configuration.
 const config = {
   root: path,
-  ignore: [...new Set(['node_modules', ...ignore])].map(route =>
-    resolve(path, route)
-  )
+  ignore: [...new Set([...ignore])].map(route => resolve(path, route))
 }
