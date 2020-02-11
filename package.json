@@ -4,8 +4,9 @@
   "description": "Prune.js is a tool that helps you finding and deleting dead code.",
   "scripts": {
     "test": "jest",
-    "build": "rimraf && tsc",
-    "lint": "standard lib/**/*.ts bin/**/*.ts"
+    "build": "tsc",
+    "lint": "prettier --check **/*.ts",
+    "fix": "prettier --write **/*.ts"
   },
   "repository": "git+ssh://git@github.com/threkk/prune.js.git",
   "keywords": [
@@ -18,7 +19,7 @@
   "license": "ISC",
   "private": true,
   "bin": {
-    "prunejs": "./src/cli.js"
+    "prunejs": "dist/bin/cli.js"
   },
   "bugs": {
     "url": "https://github.com/threkk/prune.js/issues"
@@ -27,7 +28,7 @@
   "dependencies": {
     "@types/eslint-scope": "^3.7.0",
     "@types/estraverse": "0.0.6",
-    "@types/jest": "^25.1.1",
+    "@types/jest": "^25.1.2",
     "@types/node": "^13.7.0",
     "acorn": "^7.1.0",
     "acorn-jsx": "^5.1.0",
@@ -37,6 +38,7 @@
     "eslint-scope": "^5.0.0",
     "estraverse": "^4.3.0",
     "globby": "^11.0.0",
+    "prettier": "^1.19.1",
     "typescript": "^3.7.0",
     "winston": "^3.2.1"
   },
@@ -45,7 +47,6 @@
   },
   "devDependencies": {
     "jest": "^25.1.0",
-    "rimraf": "^3.0.1",
     "ts-jest": "^25.2.0"
   }
 }
