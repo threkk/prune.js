@@ -2,6 +2,7 @@
   "compilerOptions": {
     "alwaysStrict": true,
     "baseUrl": ".",
+    "downlevelIteration": true,
     "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
