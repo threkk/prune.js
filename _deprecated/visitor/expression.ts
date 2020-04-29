@@ -1,15 +1,12 @@
-import walker = require('acorn-walk')
+import { make, simple } from 'acorn-walk'
 
 // Ignores one side of an assignment expression when looking for identifiers.
 type Side = 'left' | 'right'
 export const ignoreSide = (side: Side) =>
-  walker.make(
-    {
-      AssignmentPattern: (node: any, st: any, c: any) =>
-        c(node[side], st, 'Pattern')
-    },
-    walker.base
-  )
+  make({
+    AssignmentPattern: (node: any, st: any, c: any) =>
+      c(node[side], st, 'Pattern')
+  })
 
 // Finds all the identifiers from a given expression. It only parses one of the
 // sides, the left one by default.
@@ -18,12 +15,16 @@ export function findIdentifiers(
   excludeSide: Side = 'right'
 ): string[] {
   const acc: string[] = []
-  walker.simple(
+  const store = (node: any, acc: string[]) => {
+    if (node.type === 'Identifier') acc.push(node.name!)
+  }
+
+  simple(
     expr,
     {
-      Pattern(node: any, acc: string[]) {
-        if (node.type === 'Identifier') acc.push(node.name)
-      }
+      AssignmentPattern: store,
+      ArrayPattern: store,
+      ObjectPattern: store
     },
     ignoreSide(excludeSide),
     acc
@@ -52,7 +53,7 @@ export function findModuleFromDeclaration(expr: any): string {
     }
   }
 
-  walker.simple(expr, cbs, ignoreSide('left'), acc)
+  simple(expr, cbs, ignoreSide('left'), acc)
   return acc[0]
 }
 

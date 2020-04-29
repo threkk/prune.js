@@ -34,7 +34,7 @@ export class StatementNode {
 export interface Relation {
   src: StatementNode
   dst: StatementNode
-  rel: Relationship
+  rels: Relationship[]
 }
 
 export function hash(node: Node): string {
@@ -47,56 +47,74 @@ export function hash(node: Node): string {
 }
 
 export class Graph {
-  private nodes: { [key: string]: StatementNode }
-  private edges: Relation[]
+  #nodes: Map<string, StatementNode>
+  #edges: Relation[]
 
   constructor() {
-    this.nodes = {}
-    this.edges = []
+    this.#nodes = new Map()
+    this.#edges = []
   }
 
-  addNode(node: StatementNode): void {
-    if (!Object.keys(this.nodes).includes(node.id))
+  addNode(node: StatementNode | Node): void {
+    let n: StatementNode
+    if (node instanceof Node) {
+      n = new StatementNode({
+        node,
+        isDeclaration: /Declaration/.test(node.type),
+        isTerminal: false
+      })
+    } else {
+      n = node
+    }
+
+    if (!this.#nodes.has(n.id))
       // console.error('Original', this.nodes[node.id])
       // console.error('New', node)
       // throw new Error(`Duplicated node id: ${node.id}`)
 
-      this.nodes[node.id] = node
+      this.#nodes.set(n.id, n)
   }
 
   addEdge(edge: Relation): void {
     const { src, dst } = edge
-    const keys = Object.keys(this.nodes)
-    if (!keys.includes(src.id)) {
+    if (!this.#nodes.has(src.id)) {
       throw new Error(`Missing source node: ${src.id}`)
     }
 
-    if (!keys.includes(dst.id)) {
+    if (!this.#nodes.has(dst.id)) {
       throw new Error(`Missing destination node: ${dst.id}`)
     }
 
-    this.edges.push(edge)
+    this.#edges.push(edge)
   }
 
   getNode(id: string | Node): StatementNode {
     let key: string = id as string
     if (id instanceof Node) key = hash(id)
-    if (this.nodes[key]) return this.nodes[key]
+    if (this.#nodes.has(key)) return this.#nodes.get(key)
 
     throw new Error(`Node with id ${key} does not exist.`)
   }
 
   getAllNodes(): StatementNode[] {
-    return Object.values(this.nodes)
+    return [...this.#nodes.values()]
   }
 
   getEdgeByNode(node: StatementNode): Relation[] {
     const { id } = node
 
-    return this.edges.filter(edge => edge.src.id === id || edge.dst.id === id)
+    return this.#edges.filter(edge => edge.src.id === id || edge.dst.id === id)
   }
 
   getAllEdges(): Relation[] {
-    return this.edges
+    return this.#edges
+  }
+
+  getEdgesLength(): number {
+    return this.#edges.length
+  }
+
+  getNodesSize(): number {
+    return this.#nodes.size
   }
 }
