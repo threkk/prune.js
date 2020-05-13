@@ -9,7 +9,8 @@ export enum Relationship {
   WRITE_PROP = 'WRITE_PROP', // Source writes a property of destination.
   DELETE_PROP = 'DELETE_PROP', // Source deletes a property of destination.
   RETURN = 'RETURN', // Source returns a value to destination.
-  ARG = 'ARG' // Source is argument at destination.
+  ARG = 'ARG', // Source is argument at destination.
+  DECL = 'DECL' // Source is the declaration of destination.
 }
 
 interface StatementNodeProps {
@@ -67,12 +68,13 @@ export class Graph {
       n = node
     }
 
-    if (!this.#nodes.has(n.id))
+    if (!this.#nodes.has(n.id)) {
       // console.error('Original', this.nodes[node.id])
       // console.error('New', node)
       // throw new Error(`Duplicated node id: ${node.id}`)
 
       this.#nodes.set(n.id, n)
+    }
   }
 
   addEdge(edge: Relation): void {
@@ -93,7 +95,9 @@ export class Graph {
     if (id instanceof Node) key = hash(id)
     if (this.#nodes.has(key)) return this.#nodes.get(key)
 
-    throw new Error(`Node with id ${key} does not exist.`)
+    this.#nodes.forEach(n => console.log(n.id))
+    console.log('===> Missing', key)
+    // throw new Error(`Node with id ${key} does not exist.`)
   }
 
   getAllNodes(): StatementNode[] {
@@ -116,5 +120,22 @@ export class Graph {
 
   getNodesSize(): number {
     return this.#nodes.size
+  }
+
+  toDot(): string {
+    const nodeToLoc = (n: Node) =>
+      `"${n.loc.start.line}:${n.loc.start.column},${n.loc.end.line},${n.loc.end.column}"`
+    const nodes: string = this.getAllNodes()
+      .map(n => nodeToLoc(n.node))
+      .join(';')
+    const edges: string = this.#edges
+      .map(
+        edge =>
+          `${nodeToLoc(edge.src.node)} -> ${nodeToLoc(
+            edge.dst.node
+          )} [label="${edge.rels.join(',')}"]`
+      )
+      .join(';')
+    return `digraph { ${nodes}; ${edges} }`
   }
 }

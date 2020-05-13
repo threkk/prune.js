@@ -1,7 +1,7 @@
 import { PathLike, lstatSync } from 'fs'
 import { extractFiles, getPackageJson } from './files'
 import { resolve, join, extname } from 'path'
-import { buildGraph } from './builder'
+import { GraphBuilder } from './builder'
 import { Graph } from './graph'
 
 export default class Project {
@@ -51,7 +51,7 @@ export default class Project {
     }
   }
 
-  public generateGraphs(): Graph[] {
-    return this.paths.map(p => buildGraph(p))
-  }
+  // public generateGraphs(): Graph[] {
+  //   return this.paths.map(p => buildGraph(p))
+  // }
 }

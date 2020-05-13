@@ -1,5 +1,5 @@
 import { readFileSync, PathLike } from 'fs'
-import { analyze, ScopeManager } from 'eslint-scope'
+import { analyze, ScopeManager, Scope } from 'eslint-scope'
 
 import { hash } from './graph'
 import { Parser, Node, Options } from 'acorn'
@@ -12,7 +12,7 @@ export interface FileContent {
 
 export class ASTManager {
   #path: PathLike
-  #ast: Node
+  ast: Node
   sm: ScopeManager
   #idSt: IdentifierTracker
 
@@ -34,39 +34,39 @@ export class ASTManager {
       parser = parser.extend(jsxParser())
     }
 
-    this.#ast = parser.parse(content, {
+    this.ast = parser.parse(content, {
       ...options,
       sourceFile: this.#path as string
     })
 
-    this.sm = analyze(this.#ast, {
+    this.sm = analyze(this.ast, {
       ecmaVersion: 10, // Matching versions.
       ignoreEval: true, // Could be enabled if considered.
       sourceType: 'module' // ES6 support
     })
   }
 
-  trackNode(props: IdStPair) {
+  trackNode(props: IdContext) {
     this.#idSt.add(props)
   }
 
   // TODO: Testing
   lookupStatement(identifier: Node): Node | null {
-    return this.#idSt.getStatement(identifier)?.st ?? null
+    return this.#idSt.getContext(identifier)?.st ?? null
   }
 
   // TODO: Testing
   lookupDeclarationStatament(identifier: Node): Node | null {
-    const idScp = this.sm.acquire(identifier)
     const hashId = hash(identifier)
+    const ctx = this.#idSt.getContext(identifier)
 
-    for (let ref of idScp.references) {
+    for (let ref of ctx.sc.references) {
       const refId = hash((ref.identifier as any) as Node)
 
       if (refId === hashId && ref.resolved) {
         const defs = ref.resolved.defs
         return (
-          this.#idSt.getStatement((defs[defs.length - 1].name as any) as Node)
+          this.#idSt.getContext((defs[defs.length - 1].name as any) as Node)
             ?.st ?? null
         )
       }
@@ -76,19 +76,19 @@ export class ASTManager {
 
   // TODO: testing
   lookUpLastWriteStatement(identifier: Node): Node | null {
-    const idScp = this.sm.acquire(identifier)
     const hashId = hash(identifier)
+    const ctx = this.#idSt.getContext(identifier)
 
-    for (let ref of idScp.references) {
+    for (let ref of ctx.sc.references) {
       const refId = hash((ref.identifier as any) as Node)
 
       if (refId === hashId && ref.resolved) {
         const refs = ref.resolved.references
-        for (let i = refs.length; i > 0; i--) {
+        for (let i = refs.length - 1; i > 0; i--) {
           if (refs[i].isWrite() || refs[i].isReadWrite()) {
             return (
-              this.#idSt.getStatement((refs[i].identifier as any) as Node)
-                ?.st ?? null
+              this.#idSt.getContext((refs[i].identifier as any) as Node)?.st ??
+              null
             )
           }
         }
@@ -98,15 +98,16 @@ export class ASTManager {
   }
 }
 
-interface IdStPair {
+interface IdContext {
   id: Node
   st: Node
+  sc: Scope
 }
 
 class IdentifierTracker {
-  #tracker: Map<string, IdStPair> = new Map()
+  #tracker: Map<string, IdContext> = new Map()
 
-  add(props: IdStPair): void {
+  add(props: IdContext): void {
     const { id, st } = props
     if (id.type !== 'Identifier') {
       throw new Error(`props.id is not an Identifier. Got: ${id.type}`)
@@ -120,12 +121,12 @@ class IdentifierTracker {
     this.#tracker.set(key, props)
   }
 
-  getStatement(identifier: Node): IdStPair {
+  getContext(identifier: Node): IdContext {
     const key = hash(identifier)
     return this.#tracker.get(key)
   }
 
-  getAllPairs(): IdStPair[] {
+  getAll(): IdContext[] {
     return [...this.#tracker.values()]
   }
 
@@ -134,7 +135,7 @@ class IdentifierTracker {
     return this.#tracker.has(key)
   }
 
-  removePair(identifier: Node): void {
+  removeContext(identifier: Node): void {
     const key = hash(identifier)
     if (this.#tracker.has(key)) this.#tracker.delete(key)
   }
