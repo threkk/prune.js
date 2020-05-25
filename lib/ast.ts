@@ -1,7 +1,7 @@
 import { readFileSync, PathLike } from 'fs'
 import { analyze, ScopeManager, Scope } from 'eslint-scope'
 
-import { hash } from './graph'
+import { hash, StatementNode } from './graph'
 import { Parser, Node, Options } from 'acorn'
 import jsxParser = require('acorn-jsx')
 
@@ -51,7 +51,7 @@ export class ASTManager {
   }
 
   // TODO: Testing
-  lookupStatement(identifier: Node): Node | null {
+  lookupStatement(identifier: Node): Node {
     return this.#idSt.getContext(identifier)?.st ?? null
   }
 
@@ -65,10 +65,11 @@ export class ASTManager {
 
       if (refId === hashId && ref.resolved) {
         const defs = ref.resolved.defs
-        return (
-          this.#idSt.getContext((defs[defs.length - 1].name as any) as Node)
-            ?.st ?? null
+        const lastDef = this.#idSt.getContext(
+          (defs[defs.length - 1].name as any) as Node
         )
+        debugger
+        return lastDef?.st ?? null
       }
     }
     return null
@@ -102,13 +103,14 @@ interface IdContext {
   id: Node
   st: Node
   sc: Scope
+  isBuiltin?: boolean
 }
 
 class IdentifierTracker {
   #tracker: Map<string, IdContext> = new Map()
 
   add(props: IdContext): void {
-    const { id, st } = props
+    const { id, st, sc, isBuiltin } = props
     if (id.type !== 'Identifier') {
       throw new Error(`props.id is not an Identifier. Got: ${id.type}`)
     }
@@ -118,7 +120,7 @@ class IdentifierTracker {
     }
 
     const key = hash(id)
-    this.#tracker.set(key, props)
+    this.#tracker.set(key, { id, st, sc, isBuiltin: isBuiltin ?? false })
   }
 
   getContext(identifier: Node): IdContext {
@@ -127,7 +129,7 @@ class IdentifierTracker {
   }
 
   getAll(): IdContext[] {
-    return [...this.#tracker.values()]
+    return [...this.#tracker.values()].filter(ctx => !ctx.isBuiltin)
   }
 
   hasIdentifier(identifier: Node): boolean {
@@ -137,10 +139,13 @@ class IdentifierTracker {
 
   removeContext(identifier: Node): void {
     const key = hash(identifier)
-    if (this.#tracker.has(key)) this.#tracker.delete(key)
+    if (this.#tracker.has(key) && !this.#tracker.get(key).isBuiltin)
+      this.#tracker.delete(key)
   }
 
   keys(): string[] {
-    return [...this.#tracker.keys()]
+    return [...this.#tracker.entries()]
+      .filter(([key, ctx]) => !ctx.isBuiltin)
+      .map(([key, ctx]) => key)
   }
 }

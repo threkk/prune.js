@@ -19,16 +19,20 @@ interface StatementNodeProps {
   isDeclaration: boolean
 }
 export class StatementNode {
-  public id: string
-  public node: Node
-  public isTerminal: boolean
-  public isDeclaration: boolean
+  id: string
+  node: Node
+  isTerminal: boolean
+  isDeclaration: boolean
 
   constructor(props: StatementNodeProps) {
     this.id = hash(props.node)
     this.node = props.node
     this.isTerminal = props.isTerminal
     this.isDeclaration = props.isDeclaration
+  }
+
+  toString(): string {
+    return `"${this.node.loc.start.line}:${this.node.loc.start.column},${this.node.loc.end.line},${this.node.loc.end.column}_${this.node.type}"`
   }
 }
 
@@ -86,7 +90,6 @@ export class Graph {
     if (!this.#nodes.has(dst.id)) {
       throw new Error(`Missing destination node: ${dst.id}`)
     }
-
     this.#edges.push(edge)
   }
 
@@ -94,9 +97,7 @@ export class Graph {
     let key: string = id as string
     if (id instanceof Node) key = hash(id)
     if (this.#nodes.has(key)) return this.#nodes.get(key)
-
-    this.#nodes.forEach(n => console.log(n.id))
-    console.log('===> Missing', key)
+    return null
     // throw new Error(`Node with id ${key} does not exist.`)
   }
 
@@ -122,18 +123,11 @@ export class Graph {
     return this.#nodes.size
   }
 
-  toDot(): string {
-    const nodeToLoc = (n: Node) =>
-      `"${n.loc.start.line}:${n.loc.start.column},${n.loc.end.line},${n.loc.end.column}"`
-    const nodes: string = this.getAllNodes()
-      .map(n => nodeToLoc(n.node))
-      .join(';')
+  toString(): string {
+    const nodes: string = this.getAllNodes().join(';')
     const edges: string = this.#edges
       .map(
-        edge =>
-          `${nodeToLoc(edge.src.node)} -> ${nodeToLoc(
-            edge.dst.node
-          )} [label="${edge.rels.join(',')}"]`
+        edge => `${edge.src} -> ${edge.dst} [label="${edge.rels.join(',')}"]`
       )
       .join(';')
     return `digraph { ${nodes}; ${edges} }`

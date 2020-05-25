@@ -2,8 +2,6 @@ import { PathLike } from 'fs'
 import { ASTManager } from './ast'
 import { Graph, Relationship } from './graph'
 import { resolve, join } from 'path'
-import { Reference } from 'eslint-scope'
-import { ancestor } from 'acorn-walk'
 import * as estraverse from 'estraverse'
 import { Node } from 'acorn'
 
@@ -17,61 +15,16 @@ export class GraphBuilder {
   }
 
   generateVertices(): GraphBuilder {
-    // const visitors = {
-    //   // For every statement we find, we add it as a node of our graph.
-    //   Statement: (node: Node) => {
-    //     if (node.type !== 'BlockStatement') this.#graph.addNode(node)
-    //   },
-    //   // Variable declarations ofthen might be tagged as Pattern, which is a
-    //   // superclass of identifier.
-    //   Pattern: (node: Node, _: Node[], ancestor: Node[]) => {
-    //     if (/Identifier/.test(node.type)) {
-    //       for (let i = ancestor.length - 1; i >= 0; i--) {
-    //         const prev = ancestor[i]
-    //         if (/Statement/.test(prev.type) || /Declaration/.test(prev.type)) {
-    //           this.#am.trackNode({ id: node, st: prev })
-    //           console.log(prev)
-    //           return
-    //         }
-    //       }
-
-    //       console.log(`Statement not found for ${(node as any).name}`)
-    //       console.log(
-    //         'Ancestors:',
-    //         ancestor.map(n => n.type)
-    //       )
-    //     }
-    //   },
-    //   Identifier: (node: Node, _: Node[], ancestor: Node[]) => {
-    //     for (let i = ancestor.length - 1; i >= 0; i--) {
-    //       const prev = ancestor[i]
-    //       if (/Statement/.test(prev.type) || /Declaration/.test(prev.type)) {
-    //         this.#am.trackNode({ id: node, st: prev })
-    //         return
-    //       }
-    //     }
-
-    //     console.log(`Statement not found for ${(node as any).name}`)
-    //     console.log(
-    //       'Ancestors:',
-    //       ancestor.map(n => n.type)
-    //     )
-    //   }
-    // }
-
-    // // @ts-ignore
-    // ancestor(this.#am.sm.globalScope.block, visitors)
-
     let currentScope = this.#am.sm.acquire(this.#am.ast)
     const statements = []
     estraverse.traverse(this.#am.ast as any, {
-      enter: (node, parent) => {
+      enter: node => {
         //
         // 3. Get the current context.
         // /Function|Catch|With|Module|Class|Switch|For|Block/.test(node.type)
         if (/Function/.test(node.type)) {
-          if (this.#am.sm.acquire(node))
-            currentScope = this.#am.sm.acquire(node)
+          const funcScope = this.#am.sm.acquire(node)
+          if (funcScope) currentScope = funcScope
         }
 
         // 2. Get the last statement the identifier found.
@@ -90,18 +43,99 @@ export class GraphBuilder {
         }
         // We need to accomplish 3 things:
       },
-      leave: (node, parent) => {
+      leave: node => {
         if (/Statement|Declaration/.test(node.type)) {
           statements.pop()
         }
 
-        if (
-          /Function|Catch|With|Module|Class|Switch|For|Block/.test(node.type)
-        ) {
+        if (/Function/.test(node.type)) {
           currentScope = currentScope.upper
         }
       }
     })
+
+    return this
+  }
+
+  populateBuiltins(): GraphBuilder {
+    const firstNode = this.#am.ast
+
+    const addBuiltin = (name: string) => {
+      const id = {
+        type: 'Identifier',
+        name,
+        loc: firstNode.loc,
+        start: firstNode.start,
+        end: firstNode.end
+      }
+      this.#am.trackNode({ id, st: firstNode, sc: this.#am.sm.globalScope })
+    }
+
+    // Source https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference
+    // Values
+    addBuiltin('Infinity')
+    addBuiltin('NaN')
+    addBuiltin('undefined')
+    addBuiltin('globalThis')
+
+    // Function properties
+    addBuiltin('eval')
+    addBuiltin('isFinite')
+    addBuiltin('isNan')
+    addBuiltin('parseFloat')
+    addBuiltin('parseInt')
+    addBuiltin('decodeURI')
+    addBuiltin('decodeURIComponent')
+    addBuiltin('encodeURI')
+    addBuiltin('encodeURIComponent')
+
+    // Fundamental objects
+    addBuiltin('Object')
+    addBuiltin('Function')
+    addBuiltin('Boolean')
+    addBuiltin('Symbol')
+
+    // Error objects
+    addBuiltin('Error')
+    addBuiltin('AggregateError')
+    addBuiltin('EvalError')
+    addBuiltin('InternalError')
+    addBuiltin('RangeError')
+    addBuiltin('ReferenceError')
+    addBuiltin('SyntaxError')
+    addBuiltin('TypeError')
+    addBuiltin('URIError')
+
+    // Numbers and dates
+    addBuiltin('Number')
+    addBuiltin('BigInt')
+    addBuiltin('Math')
+    addBuiltin('Date')
+
+    // Text processing
+    addBuiltin('String')
+    addBuiltin('RegExp')
+
+    // Indexed collections
+    addBuiltin('Array')
+    addBuiltin('Int8Array')
+    addBuiltin('Uint8Array')
+    addBuiltin('Uint8ClampedArray')
+    addBuiltin('Int16Array')
+    addBuiltin('Uint16Array')
+    addBuiltin('Int32Array')
+    addBuiltin('Uint32Array')
+    addBuiltin('Float32Array')
+    addBuiltin('Float64Array')
+    addBuiltin('BigInt64Array')
+    addBuiltin('BigUint64Array')
+
+    // Keyed collections
+    // Structured data
+    // Control abstraction
+    // Reflection
+    // Internationalization
+    // WebAssembly
 
     return this
   }
@@ -123,13 +157,13 @@ export class GraphBuilder {
         const ident: Node = ref.identifier as any
         const statement = this.#am.lookupStatement(ident)
 
-        if (!statement) continue
+        if (!statement || !ref.resolved) continue
         const src = this.#graph.getNode(statement)
         const declaration = this.#am.lookupDeclarationStatament(ident)
 
         if (declaration) {
           const dcl = this.#graph.getNode(declaration)
-          if (declaration) {
+          if (dcl) {
             this.#graph.addEdge({
               src,
               dst: dcl,
@@ -138,45 +172,43 @@ export class GraphBuilder {
           }
         }
 
-        // TODO: Rethink this.
-        // const lastWrite = this.#am.lookUpLastWriteStatement(ident)
-        // if (lastWrite) {
-        //   const lw = this.#graph.getNode(lastWrite)
-        //   if (lastWrite) {
-        //     this.#graph.addEdge({
-        //       src,
-        //       dst: lw,
-        //       rels: getRelationship(ref)
-        //     })
-        //   }
-        // }
+        const lastResolvedDef = ref.resolved.defs[ref.resolved.defs.length - 1]
+        const lastResolvedDefStatement = this.#graph.getNode(
+          lastResolvedDef.node
+        )
+
+        if (lastResolvedDefStatement) {
+          const rels = []
+          if (ref.isRead() || ref.isReadWrite()) {
+            rels.push(Relationship.READ)
+          }
+
+          if (ref.isWrite() || ref.isReadWrite()) {
+            rels.push(Relationship.WRITE)
+          }
+
+          if (rels.length > 0) {
+            this.#graph.addEdge({
+              src,
+              dst: lastResolvedDefStatement,
+              rels
+            })
+          }
+        }
       }
     }
     return this
   }
 
   printAsDot(): GraphBuilder {
-    console.log(this.#graph.toDot())
+    console.log(this.#graph.toString())
     return this
   }
 }
 
-function getRelationship(ref: Reference): Relationship[] {
-  const rels = []
-  if (ref.isRead()) {
-    rels.push(Relationship.READ)
-  }
-
-  if (ref.isWrite()) {
-    rels.push(Relationship.WRITE)
-  }
-
-  return rels
-}
-
 const gb = new GraphBuilder(
   // resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
-  resolve(join(process.cwd(), './test/validation/01-variable-reading-valid.js'))
+  resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
 )
 
 gb.generateVertices().addReadWriteRelantionships().printAsDot()
