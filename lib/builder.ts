@@ -64,7 +64,7 @@ export class GraphBuilder {
       const id = {
         type: 'Identifier',
         name,
-        loc: firstNode.loc,
+        loc: null,
         start: firstNode.start,
         end: firstNode.end
       }
@@ -131,11 +131,88 @@ export class GraphBuilder {
     addBuiltin('BigUint64Array')
 
     // Keyed collections
+    addBuiltin('Map')
+    addBuiltin('Set')
+    addBuiltin('WeakMap')
+    addBuiltin('WeakSet')
+
     // Structured data
+    addBuiltin('ArrayBuffer')
+    addBuiltin('SharedArrayBuffer')
+    addBuiltin('Atomics')
+    addBuiltin('DataView')
+    addBuiltin('JSON')
+
     // Control abstraction
+    addBuiltin('Promise')
+    addBuiltin('Generator')
+    addBuiltin('GeneratorFunction')
+    addBuiltin('AsyncFunction')
+
     // Reflection
+    addBuiltin('Reflect')
+    addBuiltin('Proxy')
+
     // Internationalization
+    addBuiltin('Intl')
+    // addBuiltin('Intl.Collator')
+    // addBuiltin('Intl.DateTimeFormat')
+    // addBuiltin('Intl.ListFormat')
+    // addBuiltin('Intl.NumberFormat')
+    // addBuiltin('Intl.PluralRules')
+    // addBuiltin('Intl.RelativeTimeFormat')
+    // addBuiltin('Intl.Locale')
+
     // WebAssembly
+    addBuiltin('WebAssembly')
+    // addBuiltin('WebAssembly.Module')
+    // addBuiltin('WebAssembly.Instance')
+    // addBuiltin('WebAssembly.Memory')
+    // addBuiltin('WebAssembly.Table')
+    // addBuiltin('WebAssembly.CompileError')
+    // addBuiltin('WebAssembly.LinkError')
+    // addBuiltin('WebAssembly.RuntimeError')
+
+    // DOM
+    addBuiltin('window')
+    addBuiltin('document')
+    addBuiltin('navigator')
+    addBuiltin('Worker')
+    addBuiltin('Node')
+    addBuiltin('URL')
+    addBuiltin('Event')
+    addBuiltin('EventTarget')
+    addBuiltin('MutationObserver')
+    addBuiltin('TimeRanges')
+
+    // Web APIs https://developer.mozilla.org/en-US/docs/Web/API
+    addBuiltin('BroadcastChannel')
+    addBuiltin('MessageChannel')
+    addBuiltin('console')
+    addBuiltin('TextDecoder')
+    addBuiltin('TextEncoder')
+    addBuiltin('MediaKeys')
+    addBuiltin('fetch')
+    addBuiltin('Headers')
+    addBuiltin('Request')
+    addBuiltin('Response')
+    addBuiltin('PerformanceEntry')
+    addBuiltin('Geolocation')
+    addBuiltin('Performance')
+    addBuiltin('ImageCapture')
+    addBuiltin('PerformanceObserver')
+    addBuiltin('ResizeObserver')
+    addBuiltin('EventSource')
+    addBuiltin('TouchEvent')
+    addBuiltin('Touch')
+    addBuiltin('Animation')
+    addBuiltin('AnimationEvent')
+    addBuiltin('KeyframeEffect')
+    addBuiltin('Notification')
+    addBuiltin('Worker')
+    addBuiltin('SharedWorker')
+    addBuiltin('WebSocket')
+    addBuiltin('MessageEvent')
 
     return this
   }
