@@ -57,18 +57,17 @@ export class ASTManager {
 
   // TODO: Testing
   lookupDeclarationStatament(identifier: Node): Node | null {
-    const hashId = hash(identifier)
+    // const hashId = hash(identifier)
     const ctx = this.#idSt.getContext(identifier)
 
     for (let ref of ctx.sc.references) {
-      const refId = hash((ref.identifier as any) as Node)
+      // const refId = hash((ref.identifier as any) as Node)
 
-      if (refId === hashId && ref.resolved) {
+      if (ref.identifier.name === (identifier as any).name && ref.resolved) {
         const defs = ref.resolved.defs
         const lastDef = this.#idSt.getContext(
           (defs[defs.length - 1].name as any) as Node
         )
-        debugger
         return lastDef?.st ?? null
       }
     }
@@ -124,7 +123,11 @@ class IdentifierTracker {
   }
 
   getContext(identifier: Node): IdContext {
-    const key = hash(identifier)
+    let key = hash(identifier)
+    if (!this.#tracker.has(key)) {
+      const noLoc = { ...identifier, loc: null }
+      key = hash(noLoc)
+    }
     return this.#tracker.get(key)
   }
 
@@ -145,7 +148,7 @@ class IdentifierTracker {
 
   keys(): string[] {
     return [...this.#tracker.entries()]
-      .filter(([key, ctx]) => !ctx.isBuiltin)
-      .map(([key, ctx]) => key)
+      .filter(([_, ctx]) => !ctx.isBuiltin)
+      .map(([key, _]) => key)
   }
 }

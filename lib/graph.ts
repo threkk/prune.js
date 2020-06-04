@@ -36,10 +36,17 @@ export class StatementNode {
   }
 }
 
-export interface Relation {
+export interface RelationProps {
+  src: StatementNode | Node
+  dst: StatementNode | Node
+  rel: Relationship
+  var?: string
+  index?: number
+}
+
+interface Relation extends RelationProps {
   src: StatementNode
   dst: StatementNode
-  rels: Relationship[]
 }
 
 export function hash(node: Node): string {
@@ -49,6 +56,10 @@ export function hash(node: Node): string {
 
   hasher.update(input)
   return hasher.digest('base64')
+}
+
+function isNode(x: StatementNode | Node): x is Node {
+  return x instanceof Node
 }
 
 export class Graph {
@@ -61,16 +72,13 @@ export class Graph {
   }
 
   addNode(node: StatementNode | Node): void {
-    let n: StatementNode
-    if (node instanceof Node) {
-      n = new StatementNode({
-        node,
-        isDeclaration: /Declaration/.test(node.type),
-        isTerminal: false
-      })
-    } else {
-      n = node
-    }
+    const n: StatementNode = isNode(node)
+      ? new StatementNode({
+          node,
+          isDeclaration: /Declaration/.test(node.type),
+          isTerminal: false
+        })
+      : node
 
     if (!this.#nodes.has(n.id)) {
       // console.error('Original', this.nodes[node.id])
@@ -81,16 +89,29 @@ export class Graph {
     }
   }
 
-  addEdge(edge: Relation): void {
-    const { src, dst } = edge
-    if (!this.#nodes.has(src.id)) {
+  addEdge(edge: RelationProps): void {
+    const src: StatementNode = isNode(edge.src)
+      ? this.getNode(edge.src)
+      : edge.src
+    const dst: StatementNode = isNode(edge.dst)
+      ? this.getNode(edge.dst)
+      : edge.dst
+
+    if (!src || !this.#nodes.has(src.id)) {
       throw new Error(`Missing source node: ${src.id}`)
     }
 
-    if (!this.#nodes.has(dst.id)) {
+    if (!dst || !this.#nodes.has(dst.id)) {
       throw new Error(`Missing destination node: ${dst.id}`)
     }
-    this.#edges.push(edge)
+
+    this.#edges.push({
+      src,
+      dst,
+      rel: edge.rel,
+      index: edge.index,
+      var: edge.var
+    })
   }
 
   getNode(id: string | Node): StatementNode {
@@ -127,7 +148,10 @@ export class Graph {
     const nodes: string = this.getAllNodes().join(';')
     const edges: string = this.#edges
       .map(
-        edge => `${edge.src} -> ${edge.dst} [label="${edge.rels.join(',')}"]`
+        edge =>
+          `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
+            edge.var ? ',var=' + edge.var : ''
+          }${edge.index ? ',idx=' + edge.index : ''}"]`
       )
       .join(';')
     return `digraph { ${nodes}; ${edges} }`

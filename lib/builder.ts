@@ -1,6 +1,7 @@
 import { PathLike } from 'fs'
 import { ASTManager } from './ast'
 import { Graph, Relationship } from './graph'
+import { BUILTINS } from './builtin'
 import { resolve, join } from 'path'
 import * as estraverse from 'estraverse'
 import { Node } from 'acorn'
@@ -71,148 +72,7 @@ export class GraphBuilder {
       this.#am.trackNode({ id, st: firstNode, sc: this.#am.sm.globalScope })
     }
 
-    // Source https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference
-    // Values
-    addBuiltin('Infinity')
-    addBuiltin('NaN')
-    addBuiltin('undefined')
-    addBuiltin('globalThis')
-
-    // Function properties
-    addBuiltin('eval')
-    addBuiltin('isFinite')
-    addBuiltin('isNan')
-    addBuiltin('parseFloat')
-    addBuiltin('parseInt')
-    addBuiltin('decodeURI')
-    addBuiltin('decodeURIComponent')
-    addBuiltin('encodeURI')
-    addBuiltin('encodeURIComponent')
-
-    // Fundamental objects
-    addBuiltin('Object')
-    addBuiltin('Function')
-    addBuiltin('Boolean')
-    addBuiltin('Symbol')
-
-    // Error objects
-    addBuiltin('Error')
-    addBuiltin('AggregateError')
-    addBuiltin('EvalError')
-    addBuiltin('InternalError')
-    addBuiltin('RangeError')
-    addBuiltin('ReferenceError')
-    addBuiltin('SyntaxError')
-    addBuiltin('TypeError')
-    addBuiltin('URIError')
-
-    // Numbers and dates
-    addBuiltin('Number')
-    addBuiltin('BigInt')
-    addBuiltin('Math')
-    addBuiltin('Date')
-
-    // Text processing
-    addBuiltin('String')
-    addBuiltin('RegExp')
-
-    // Indexed collections
-    addBuiltin('Array')
-    addBuiltin('Int8Array')
-    addBuiltin('Uint8Array')
-    addBuiltin('Uint8ClampedArray')
-    addBuiltin('Int16Array')
-    addBuiltin('Uint16Array')
-    addBuiltin('Int32Array')
-    addBuiltin('Uint32Array')
-    addBuiltin('Float32Array')
-    addBuiltin('Float64Array')
-    addBuiltin('BigInt64Array')
-    addBuiltin('BigUint64Array')
-
-    // Keyed collections
-    addBuiltin('Map')
-    addBuiltin('Set')
-    addBuiltin('WeakMap')
-    addBuiltin('WeakSet')
-
-    // Structured data
-    addBuiltin('ArrayBuffer')
-    addBuiltin('SharedArrayBuffer')
-    addBuiltin('Atomics')
-    addBuiltin('DataView')
-    addBuiltin('JSON')
-
-    // Control abstraction
-    addBuiltin('Promise')
-    addBuiltin('Generator')
-    addBuiltin('GeneratorFunction')
-    addBuiltin('AsyncFunction')
-
-    // Reflection
-    addBuiltin('Reflect')
-    addBuiltin('Proxy')
-
-    // Internationalization
-    addBuiltin('Intl')
-    // addBuiltin('Intl.Collator')
-    // addBuiltin('Intl.DateTimeFormat')
-    // addBuiltin('Intl.ListFormat')
-    // addBuiltin('Intl.NumberFormat')
-    // addBuiltin('Intl.PluralRules')
-    // addBuiltin('Intl.RelativeTimeFormat')
-    // addBuiltin('Intl.Locale')
-
-    // WebAssembly
-    addBuiltin('WebAssembly')
-    // addBuiltin('WebAssembly.Module')
-    // addBuiltin('WebAssembly.Instance')
-    // addBuiltin('WebAssembly.Memory')
-    // addBuiltin('WebAssembly.Table')
-    // addBuiltin('WebAssembly.CompileError')
-    // addBuiltin('WebAssembly.LinkError')
-    // addBuiltin('WebAssembly.RuntimeError')
-
-    // DOM
-    addBuiltin('window')
-    addBuiltin('document')
-    addBuiltin('navigator')
-    addBuiltin('Worker')
-    addBuiltin('Node')
-    addBuiltin('URL')
-    addBuiltin('Event')
-    addBuiltin('EventTarget')
-    addBuiltin('MutationObserver')
-    addBuiltin('TimeRanges')
-
-    // Web APIs https://developer.mozilla.org/en-US/docs/Web/API
-    addBuiltin('BroadcastChannel')
-    addBuiltin('MessageChannel')
-    addBuiltin('console')
-    addBuiltin('TextDecoder')
-    addBuiltin('TextEncoder')
-    addBuiltin('MediaKeys')
-    addBuiltin('fetch')
-    addBuiltin('Headers')
-    addBuiltin('Request')
-    addBuiltin('Response')
-    addBuiltin('PerformanceEntry')
-    addBuiltin('Geolocation')
-    addBuiltin('Performance')
-    addBuiltin('ImageCapture')
-    addBuiltin('PerformanceObserver')
-    addBuiltin('ResizeObserver')
-    addBuiltin('EventSource')
-    addBuiltin('TouchEvent')
-    addBuiltin('Touch')
-    addBuiltin('Animation')
-    addBuiltin('AnimationEvent')
-    addBuiltin('KeyframeEffect')
-    addBuiltin('Notification')
-    addBuiltin('Worker')
-    addBuiltin('SharedWorker')
-    addBuiltin('WebSocket')
-    addBuiltin('MessageEvent')
+    BUILTINS.forEach(builtin => addBuiltin(builtin))
 
     return this
   }
@@ -230,52 +90,95 @@ export class GraphBuilder {
     // For eacg scope, we visit all the references in every escope.
 
     for (const scope of this.#am.sm.scopes) {
+      const lastW = new Map()
       for (const ref of scope.references) {
-        const ident: Node = ref.identifier as any
-        const statement = this.#am.lookupStatement(ident)
-
+        const statement = this.#am.lookupStatement(ref.identifier as any)
         if (!statement || !ref.resolved) continue
-        const src = this.#graph.getNode(statement)
-        const declaration = this.#am.lookupDeclarationStatament(ident)
 
-        if (declaration) {
-          const dcl = this.#graph.getNode(declaration)
-          if (dcl) {
-            this.#graph.addEdge({
-              src,
-              dst: dcl,
-              rels: [Relationship.DECL]
-            })
-          }
+        const { name } = ref.identifier
+
+        if (!lastW.has(name)) {
+          const dcl = this.#am.lookupDeclarationStatament(ref.identifier as any)
+          if (dcl) lastW.set(name, dcl)
         }
 
-        const lastResolvedDef = ref.resolved.defs[ref.resolved.defs.length - 1]
-        const lastResolvedDefStatement = this.#graph.getNode(
-          lastResolvedDef.node
-        )
+        const dst = lastW.get(name)
+        if (!dst) continue
 
-        if (lastResolvedDefStatement) {
-          const rels = []
-          if (ref.isRead() || ref.isReadWrite()) {
-            rels.push(Relationship.READ)
-          }
+        if (ref.isRead() || ref.isReadWrite()) {
+          this.#graph.addEdge({
+            dst,
+            src: statement,
+            rel: Relationship.READ,
+            var: name
+          })
+        }
 
-          if (ref.isWrite() || ref.isReadWrite()) {
-            rels.push(Relationship.WRITE)
-          }
-
-          if (rels.length > 0) {
-            this.#graph.addEdge({
-              src,
-              dst: lastResolvedDefStatement,
-              rels
-            })
-          }
+        if (ref.isWrite() || ref.isReadWrite()) {
+          this.#graph.addEdge({
+            dst,
+            src: statement,
+            rel: Relationship.WRITE,
+            var: name
+          })
+          lastW.set(name, statement)
         }
       }
     }
     return this
   }
+
+  // linkFunctionCalls(): GraphBuilder {
+  //   let currentScope = this.#am.sm.acquire(this.#am.ast)
+
+  //   const checkParameter = (param: Node, index: number) =>
+  //     estraverse.traverse(param, {
+  //       enter: node => {
+  //         // Recursion control
+  //         if (/Block/.test(node.type)) estraverse.VisitorOption.Skip
+
+  //         if (/Identifier/.test(node.type)) {
+  //           // 1. Search for its resolution.
+  //           const dst = this.#am.lookupDeclarationStatament(node)
+
+  //           // 2. Link statement with the
+  //           if (dst) {
+  //             const src = this.#am.lookupStatement(node)
+  //             this.#graph.addEdge({
+  //               dst,
+  //               src,
+  //               index,
+  //               var: node.name,
+  //               rel: Relationship.ARG
+  //             })
+  //           }
+  //         }
+  //       }
+  //     })
+
+  //   estraverse.traverse(this.#am.ast as any, {
+  //     enter: node => {
+  //       if (/Function/.test(node.type)) {
+  //         const funcScope = this.#am.sm.acquire(node)
+  //         if (funcScope) currentScope = funcScope
+  //       }
+  //       if (/CallExpression|NewExpression/.test(node.type)) {
+  //         for (let idx = 0; idx < (node as any).arguments.length; idx++) {
+  //           checkParameter((node as any).arguments[idx], idx)
+  //         }
+  //       }
+  //     },
+  //     leave: node => {
+  //       if (/CallExpression|NewExpression/.test(node.type)) {
+  //       }
+
+  //       if (/Function/.test(node.type)) {
+  //         currentScope = currentScope.upper
+  //       }
+  //     }
+  //   })
+  //   return this
+  // }
 
   printAsDot(): GraphBuilder {
     console.log(this.#graph.toString())
@@ -285,7 +188,7 @@ export class GraphBuilder {
 
 const gb = new GraphBuilder(
   // resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
-  resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
+  resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
 )
 
 gb.generateVertices().addReadWriteRelantionships().printAsDot()
