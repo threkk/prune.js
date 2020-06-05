@@ -10,6 +10,17 @@ export interface FileContent {
   content: string
 }
 
+export enum VariableTypes {
+  CATCH_CLAUSE = 'CatchClause',
+  PARAMETER = 'Parameter',
+  FUNCTION_NAME = 'FunctionName',
+  CLASS_NAME = 'ClassName',
+  VARIABLE = 'Variable',
+  IMPORT_BINDING = 'ImportBinding',
+  TDZ = 'TDZ',
+  IMPLICIT_GLOBAL = 'ImplicitGlobalVariable'
+}
+
 export class ASTManager {
   #path: PathLike
   ast: Node
@@ -65,10 +76,11 @@ export class ASTManager {
 
       if (ref.identifier.name === (identifier as any).name && ref.resolved) {
         const defs = ref.resolved.defs
-        const lastDef = this.#idSt.getContext(
-          (defs[defs.length - 1].name as any) as Node
-        )
-        return lastDef?.st ?? null
+        return defs[defs.length - 1].parent ?? defs[defs.length - 1].node
+        // const lastDef = this.#idSt.getContext(
+        //   (defs[defs.length - 1].name as any) as Node
+        // )
+        // return lastDef?.st ?? null
       }
     }
     return null

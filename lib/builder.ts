@@ -1,5 +1,5 @@
 import { PathLike } from 'fs'
-import { ASTManager } from './ast'
+import { ASTManager, VariableTypes } from './ast'
 import { Graph, Relationship } from './graph'
 import { BUILTINS } from './builtin'
 import { resolve, join } from 'path'
@@ -106,10 +106,18 @@ export class GraphBuilder {
         if (!dst) continue
 
         if (ref.isRead() || ref.isReadWrite()) {
+          let rel = Relationship.READ
+          const refType = ref.resolved.defs[ref.resolved.defs.length - 1].type
+          if (
+            refType === VariableTypes.CLASS_NAME.valueOf() ||
+            refType === VariableTypes.FUNCTION_NAME.valueOf()
+          ) {
+            rel = Relationship.CALL
+          }
           this.#graph.addEdge({
             dst,
             src: statement,
-            rel: Relationship.READ,
+            rel,
             var: name
           })
         }
