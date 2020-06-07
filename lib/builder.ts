@@ -136,57 +136,57 @@ export class GraphBuilder {
     return this
   }
 
-  // linkFunctionCalls(): GraphBuilder {
-  //   let currentScope = this.#am.sm.acquire(this.#am.ast)
+  linkFunctionCalls(): GraphBuilder {
+    let currentScope = this.#am.sm.acquire(this.#am.ast)
 
-  //   const checkParameter = (param: Node, index: number) =>
-  //     estraverse.traverse(param, {
-  //       enter: node => {
-  //         // Recursion control
-  //         if (/Block/.test(node.type)) estraverse.VisitorOption.Skip
+    const checkParameter = (param, index) =>
+      estraverse.traverse(param, {
+        enter: node => {
+          // Recursion control
+          if (/Block/.test(node.type)) estraverse.VisitorOption.Skip
 
-  //         if (/Identifier/.test(node.type)) {
-  //           // 1. Search for its resolution.
-  //           const dst = this.#am.lookupDeclarationStatament(node)
+          if (/Identifier/.test(node.type)) {
+            // 1. Search for its resolution.
+            const dst = this.#am.lookupDeclarationStatament(node as Node)
 
-  //           // 2. Link statement with the
-  //           if (dst) {
-  //             const src = this.#am.lookupStatement(node)
-  //             this.#graph.addEdge({
-  //               dst,
-  //               src,
-  //               index,
-  //               var: node.name,
-  //               rel: Relationship.ARG
-  //             })
-  //           }
-  //         }
-  //       }
-  //     })
+            // 2. Link statement with the
+            if (dst) {
+              const src = this.#am.lookupStatement(node as Node)
+              this.#graph.addEdge({
+                dst,
+                src,
+                index,
+                var: (node as any).name,
+                rel: Relationship.ARG
+              })
+            }
+          }
+        }
+      })
 
-  //   estraverse.traverse(this.#am.ast as any, {
-  //     enter: node => {
-  //       if (/Function/.test(node.type)) {
-  //         const funcScope = this.#am.sm.acquire(node)
-  //         if (funcScope) currentScope = funcScope
-  //       }
-  //       if (/CallExpression|NewExpression/.test(node.type)) {
-  //         for (let idx = 0; idx < (node as any).arguments.length; idx++) {
-  //           checkParameter((node as any).arguments[idx], idx)
-  //         }
-  //       }
-  //     },
-  //     leave: node => {
-  //       if (/CallExpression|NewExpression/.test(node.type)) {
-  //       }
+    estraverse.traverse(this.#am.ast as any, {
+      enter: node => {
+        if (/Function/.test(node.type)) {
+          const funcScope = this.#am.sm.acquire(node)
+          if (funcScope) currentScope = funcScope
+        }
+        if (/CallExpression|NewExpression/.test(node.type)) {
+          for (let idx = 0; idx < (node as any).arguments.length; idx++) {
+            checkParameter((node as any).arguments[idx], idx)
+          }
+        }
+      },
+      leave: node => {
+        if (/CallExpression|NewExpression/.test(node.type)) {
+        }
 
-  //       if (/Function/.test(node.type)) {
-  //         currentScope = currentScope.upper
-  //       }
-  //     }
-  //   })
-  //   return this
-  // }
+        if (/Function/.test(node.type)) {
+          currentScope = currentScope.upper
+        }
+      }
+    })
+    return this
+  }
 
   printAsDot(): GraphBuilder {
     console.log(this.#graph.toString())
@@ -199,4 +199,7 @@ const gb = new GraphBuilder(
   resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
 )
 
-gb.generateVertices().addReadWriteRelantionships().printAsDot()
+gb.generateVertices()
+  .addReadWriteRelantionships()
+  .linkFunctionCalls()
+  .printAsDot()

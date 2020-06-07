@@ -150,8 +150,8 @@ export class Graph {
       .map(
         edge =>
           `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
-            edge.var ? ',var=' + edge.var : ''
-          }${edge.index ? ',idx=' + edge.index : ''}"]`
+            edge.var != null ? ',var=' + edge.var : ''
+          }${edge.index != null ? ',idx=' + edge.index : ''}"]`
       )
       .join(';')
     return `digraph { ${nodes}; ${edges} }`
