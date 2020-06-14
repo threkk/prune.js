@@ -10,6 +10,7 @@ export enum Relationship {
   DELETE_PROP = 'DELETE_PROP', // Source deletes a property of destination.
   RETURN = 'RETURN', // Source returns a value to destination.
   ARG = 'ARG', // Source is argument at destination.
+  PARAM = 'PARAM', // Source is a parameter at destination.
   DECL = 'DECL' // Source is the declaration of destination.
 }
 

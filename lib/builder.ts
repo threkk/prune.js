@@ -93,7 +93,7 @@ export class GraphBuilder {
       const lastW = new Map()
       for (const ref of scope.references) {
         const statement = this.#am.lookupStatement(ref.identifier as any)
-        if (!statement || !ref.resolved) continue
+        if (statement == null || !ref.resolved) continue
 
         const { name } = ref.identifier
 
@@ -104,6 +104,8 @@ export class GraphBuilder {
 
         const dst = lastW.get(name)
         if (!dst) continue
+
+        console.log(dst)
 
         if (ref.isRead() || ref.isReadWrite()) {
           let rel = Relationship.READ
@@ -136,10 +138,10 @@ export class GraphBuilder {
     return this
   }
 
-  linkFunctionCalls(): GraphBuilder {
+  linkCallParameters(): GraphBuilder {
     let currentScope = this.#am.sm.acquire(this.#am.ast)
 
-    const checkParameter = (param, index) =>
+    const checkParameter = (param, index: number) =>
       estraverse.traverse(param, {
         enter: node => {
           // Recursion control
@@ -157,18 +159,51 @@ export class GraphBuilder {
                 src,
                 index,
                 var: (node as any).name,
-                rel: Relationship.ARG
+                rel: Relationship.PARAM
               })
             }
           }
         }
       })
 
+    const checkArgument = (arg, index: number) => {
+      estraverse.traverse(arg, {
+        enter: node => {
+          if (/Identifier/.test(node.type)) {
+            currentScope.variables
+              .filter(v => v.name === (node as any).name)
+              .forEach(v => {
+                if (v.defs[0] != null && v.references[0] != null) {
+                  const src = v.defs[0].node
+                  const dst = this.#am.lookupStatement(
+                    v.references[0].identifier as any
+                  )
+
+                  if (src != null && dst != null) {
+                    this.#graph.addEdge({
+                      src,
+                      dst,
+                      index,
+                      var: v.name,
+                      rel: Relationship.ARG
+                    })
+                  }
+                }
+              })
+          }
+        }
+      })
+    }
+
     estraverse.traverse(this.#am.ast as any, {
       enter: node => {
         if (/Function/.test(node.type)) {
           const funcScope = this.#am.sm.acquire(node)
           if (funcScope) currentScope = funcScope
+
+          for (let idx = 0; idx < (node as any).params.length; idx++) {
+            checkArgument((node as any).params[idx], idx)
+          }
         }
         if (/CallExpression|NewExpression/.test(node.type)) {
           for (let idx = 0; idx < (node as any).arguments.length; idx++) {
@@ -177,9 +212,6 @@ export class GraphBuilder {
         }
       },
       leave: node => {
-        if (/CallExpression|NewExpression/.test(node.type)) {
-        }
-
         if (/Function/.test(node.type)) {
           currentScope = currentScope.upper
         }
@@ -195,11 +227,11 @@ export class GraphBuilder {
 }
 
 const gb = new GraphBuilder(
-  // resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
-  resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
+  resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
+  // resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
 )
 
 gb.generateVertices()
   .addReadWriteRelantionships()
-  .linkFunctionCalls()
+  .linkCallParameters()
   .printAsDot()
