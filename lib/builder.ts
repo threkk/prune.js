@@ -1,10 +1,10 @@
 import { PathLike } from 'fs'
-import { ASTManager, VariableTypes } from './ast'
+import { ASTManager, VariableTypes, isStatementType } from './ast'
 import { Graph, Relationship } from './graph'
 import { BUILTINS } from './builtin'
 import { resolve, join } from 'path'
 import * as estraverse from 'estraverse'
-import { Node } from 'acorn'
+import * as estree from 'estree'
 
 export class GraphBuilder {
   #graph: Graph
@@ -18,8 +18,8 @@ export class GraphBuilder {
   generateVertices(): GraphBuilder {
     let currentScope = this.#am.sm.acquire(this.#am.ast)
     const statements = []
-    estraverse.traverse(this.#am.ast as any, {
-      enter: node => {
+    estraverse.traverse(this.#am.ast, {
+      enter: (node: estree.Node) => {
         //
         // 3. Get the current context.
         // /Function|Catch|With|Module|Class|Switch|For|Block/.test(node.type)
@@ -29,28 +29,27 @@ export class GraphBuilder {
         }
 
         // 2. Get the last statement the identifier found.
-        if (
-          node.type !== 'BlockStatement' &&
-          /Statement|Declaration/.test(node.type)
-        ) {
-          this.#graph.addNode(node as acorn.Node)
+        if (isStatementType(node)) {
+          this.#graph.addVertex(node)
           statements.push(node)
         }
 
         // 1. Get all the identifiers.
-        if (/Identifier/.test(node.type)) {
+        if (node.type === 'Identifier') {
           const prev = statements[statements.length - 1]
           this.#am.trackNode({ id: node as any, st: prev, sc: currentScope })
         }
         // We need to accomplish 3 things:
       },
-      leave: node => {
-        if (/Statement|Declaration/.test(node.type)) {
+      leave: (node: estree.Node) => {
+        if (isStatementType(node)) {
           statements.pop()
         }
 
         if (/Function/.test(node.type)) {
           currentScope = currentScope.upper
+          // TODO: Make sure that if the scope is not acquired, it doesn't go
+          // up.
         }
       }
     })
@@ -59,15 +58,14 @@ export class GraphBuilder {
   }
 
   populateBuiltins(): GraphBuilder {
-    const firstNode = this.#am.ast
+    const firstNode = this.#am.ast as estree.Program
 
     const addBuiltin = (name: string) => {
-      const id = {
+      const id: estree.Identifier = {
         type: 'Identifier',
         name,
         loc: null,
-        start: firstNode.start,
-        end: firstNode.end
+        range: firstNode.range
       }
       this.#am.trackNode({ id, st: firstNode, sc: this.#am.sm.globalScope })
     }
@@ -92,7 +90,8 @@ export class GraphBuilder {
     for (const scope of this.#am.sm.scopes) {
       const lastW = new Map()
       for (const ref of scope.references) {
-        const statement = this.#am.lookupStatement(ref.identifier as any)
+        // const statement = this.#am.lookupStatement(ref.identifier as any)
+        const statement = this.#graph.getVertex(ref.identifier as any)
         if (statement == null || !ref.resolved) continue
 
         const { name } = ref.identifier
@@ -104,8 +103,6 @@ export class GraphBuilder {
 
         const dst = lastW.get(name)
         if (!dst) continue
-
-        console.log(dst)
 
         if (ref.isRead() || ref.isReadWrite()) {
           let rel = Relationship.READ
@@ -143,17 +140,19 @@ export class GraphBuilder {
 
     const checkParameter = (param, index: number) =>
       estraverse.traverse(param, {
-        enter: node => {
+        enter: (node: estree.Node) => {
           // Recursion control
           if (/Block/.test(node.type)) estraverse.VisitorOption.Skip
 
           if (/Identifier/.test(node.type)) {
             // 1. Search for its resolution.
-            const dst = this.#am.lookupDeclarationStatament(node as Node)
-
+            const dst = this.#am.lookupDeclarationStatament(
+              node as estree.Identifier
+            )
             // 2. Link statement with the
             if (dst) {
-              const src = this.#am.lookupStatement(node as Node)
+              // const src = this.#am.lookupStatement(node as Node)
+              const src = this.#graph.getVertex(node)
               this.#graph.addEdge({
                 dst,
                 src,
@@ -174,8 +173,11 @@ export class GraphBuilder {
               .filter(v => v.name === (node as any).name)
               .forEach(v => {
                 if (v.defs[0] != null && v.references[0] != null) {
-                  const src = v.defs[0].node
-                  const dst = this.#am.lookupStatement(
+                  const src = this.#graph.getVertex(v.defs[0].node)
+                  // const dst = this.#am.lookupStatement(
+                  //   v.references[0].identifier as any
+                  // )
+                  const dst = this.#graph.getVertex(
                     v.references[0].identifier as any
                   )
 
@@ -222,16 +224,21 @@ export class GraphBuilder {
 
   printAsDot(): GraphBuilder {
     console.log(this.#graph.toString())
+    // this.#graph
+    //   .getAllNodes()
+    //   .forEach((v, i) => console.log(`Statement ${i}: ${v.start},${v.end}`))
     return this
   }
 }
 
 const gb = new GraphBuilder(
-  resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
+  // resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
   // resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
+  resolve(join(process.cwd(), './test/validation/05-control-flow-valid.js'))
 )
 
 gb.generateVertices()
+  .populateBuiltins()
   .addReadWriteRelantionships()
   .linkCallParameters()
   .printAsDot()

@@ -1,9 +1,8 @@
 import { readFileSync, PathLike } from 'fs'
-import { analyze, ScopeManager, Scope } from 'eslint-scope'
-
-import { hash, StatementNode } from './graph'
-import { Parser, Node, Options } from 'acorn'
-import jsxParser = require('acorn-jsx')
+import * as escope from 'eslint-scope'
+import * as estree from 'estree'
+import * as espree from 'espree'
+import hash from './util/hash'
 
 export interface FileContent {
   path: PathLike
@@ -21,10 +20,19 @@ export enum VariableTypes {
   IMPLICIT_GLOBAL = 'ImplicitGlobalVariable'
 }
 
+export type StatementType =
+  | estree.Statement
+  | estree.Declaration
+  | estree.Program
+
+export function isStatementType(node: estree.Node): node is StatementType {
+  return /Statement|Declaration/.test(node.type) || node.type === 'Program'
+}
+
 export class ASTManager {
   #path: PathLike
-  ast: Node
-  sm: ScopeManager
+  ast: estree.Node
+  sm: escope.ScopeManager
   #idSt: IdentifierTracker
 
   constructor(path: PathLike, jsx: boolean = false) {
@@ -32,25 +40,22 @@ export class ASTManager {
     this.#idSt = new IdentifierTracker()
 
     const content: string = readFileSync(this.#path, 'utf-8')
-    const options: Options = {
+    const options: espree.Options = {
       sourceType: 'module', // Enables the import/export statements.
-      ranges: true, // Add ranges to the nodes [node.start, node.end]
+      loc: true, // Enables locations.
+      range: true, // Add ranges to the nodes [node.start, node.end]
       ecmaVersion: 10,
       allowHashBang: true,
-      locations: true
+      locations: true,
+      ecmaFeatures: {
+        jsx,
+        globalReturn: true
+      }
     }
 
-    let parser = Parser
-    if (jsx) {
-      parser = parser.extend(jsxParser())
-    }
+    this.ast = espree.parse(content, options)
 
-    this.ast = parser.parse(content, {
-      ...options,
-      sourceFile: this.#path as string
-    })
-
-    this.sm = analyze(this.ast, {
+    this.sm = escope.analyze(this.ast, {
       ecmaVersion: 10, // Matching versions.
       ignoreEval: true, // Could be enabled if considered.
       sourceType: 'module' // ES6 support
@@ -62,48 +67,27 @@ export class ASTManager {
   }
 
   // TODO: Testing
-  lookupStatement(identifier: Node): Node {
+  lookupStatement(identifier: estree.Identifier): StatementType | null {
     return this.#idSt.getContext(identifier)?.st ?? null
   }
 
   // TODO: Testing
-  lookupDeclarationStatament(identifier: Node): Node | null {
+  lookupDeclarationStatament(
+    identifier: estree.Identifier
+  ): StatementType | null {
     // const hashId = hash(identifier)
     const ctx = this.#idSt.getContext(identifier)
 
     for (let ref of ctx.sc.references) {
-      // const refId = hash((ref.identifier as any) as Node)
+      // const refId = hash((ref.identifier as any) as estree.Node)
 
-      if (ref.identifier.name === (identifier as any).name && ref.resolved) {
+      if (ref.identifier.name === identifier.name && ref.resolved) {
         const defs = ref.resolved.defs
         return defs[defs.length - 1].parent ?? defs[defs.length - 1].node
         // const lastDef = this.#idSt.getContext(
-        //   (defs[defs.length - 1].name as any) as Node
+        //   (defs[defs.length - 1].name as any) as estree.Node
         // )
         // return lastDef?.st ?? null
-      }
-    }
-    return null
-  }
-
-  // TODO: testing
-  lookUpLastWriteStatement(identifier: Node): Node | null {
-    const hashId = hash(identifier)
-    const ctx = this.#idSt.getContext(identifier)
-
-    for (let ref of ctx.sc.references) {
-      const refId = hash((ref.identifier as any) as Node)
-
-      if (refId === hashId && ref.resolved) {
-        const refs = ref.resolved.references
-        for (let i = refs.length - 1; i > 0; i--) {
-          if (refs[i].isWrite() || refs[i].isReadWrite()) {
-            return (
-              this.#idSt.getContext((refs[i].identifier as any) as Node)?.st ??
-              null
-            )
-          }
-        }
       }
     }
     return null
@@ -111,9 +95,9 @@ export class ASTManager {
 }
 
 interface IdContext {
-  id: Node
-  st: Node
-  sc: Scope
+  id: estree.Identifier
+  st: estree.Statement | estree.Declaration | estree.Program
+  sc: escope.Scope
   isBuiltin?: boolean
 }
 
@@ -122,19 +106,11 @@ class IdentifierTracker {
 
   add(props: IdContext): void {
     const { id, st, sc, isBuiltin } = props
-    if (id.type !== 'Identifier') {
-      throw new Error(`props.id is not an Identifier. Got: ${id.type}`)
-    }
-
-    if (!/Statement|Declaration/.test(st.type)) {
-      throw new Error(`props.st is not a Statement. Got: ${st.type}`)
-    }
-
     const key = hash(id)
     this.#tracker.set(key, { id, st, sc, isBuiltin: isBuiltin ?? false })
   }
 
-  getContext(identifier: Node): IdContext {
+  getContext(identifier: estree.Identifier): IdContext {
     let key = hash(identifier)
     if (!this.#tracker.has(key)) {
       const noLoc = { ...identifier, loc: null }
@@ -147,12 +123,12 @@ class IdentifierTracker {
     return [...this.#tracker.values()].filter(ctx => !ctx.isBuiltin)
   }
 
-  hasIdentifier(identifier: Node): boolean {
+  hasIdentifier(identifier: estree.Node): boolean {
     const key = hash(identifier)
     return this.#tracker.has(key)
   }
 
-  removeContext(identifier: Node): void {
+  removeContext(identifier: estree.Node): void {
     const key = hash(identifier)
     if (this.#tracker.has(key) && !this.#tracker.get(key).isBuiltin)
       this.#tracker.delete(key)

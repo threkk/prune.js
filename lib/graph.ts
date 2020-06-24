@@ -1,5 +1,6 @@
-import { Node } from 'acorn'
-import { createHash, Hash } from 'crypto'
+import * as estree from 'estree'
+import hash from './util/hash'
+import { StatementType, isStatementType } from './ast'
 
 export enum Relationship {
   CALL = 'CALL', // Source calls the destination.
@@ -14,57 +15,48 @@ export enum Relationship {
   DECL = 'DECL' // Source is the declaration of destination.
 }
 
-interface StatementNodeProps {
-  node: Node
+interface StatementVertexProps {
+  node: StatementType
   isTerminal: boolean
   isDeclaration: boolean
 }
-export class StatementNode {
+
+export class StatementVertex {
   id: string
-  node: Node
+  start: number
+  end: number
+  node: StatementType
   isTerminal: boolean
   isDeclaration: boolean
 
-  constructor(props: StatementNodeProps) {
+  constructor(props: StatementVertexProps) {
     this.id = hash(props.node)
     this.node = props.node
     this.isTerminal = props.isTerminal
     this.isDeclaration = props.isDeclaration
+    ;[this.start, this.end] = props.node.range!
   }
 
   toString(): string {
-    return `"${this.node.loc.start.line}:${this.node.loc.start.column},${this.node.loc.end.line},${this.node.loc.end.column}_${this.node.type}"`
+    return `"${this.node.loc.start.line}:${this.node.loc.start.column},${this.node.loc.end.line}:${this.node.loc.end.column}_${this.node.type}"`
   }
 }
 
 export interface RelationProps {
-  src: StatementNode | Node
-  dst: StatementNode | Node
+  src: StatementVertex | StatementType
+  dst: StatementVertex | StatementType
   rel: Relationship
   var?: string
   index?: number
 }
 
 interface Relation extends RelationProps {
-  src: StatementNode
-  dst: StatementNode
-}
-
-export function hash(node: Node): string {
-  const hasher: Hash = createHash('md5')
-  const { type, loc } = node
-  const input = JSON.stringify({ type, loc })
-
-  hasher.update(input)
-  return hasher.digest('base64')
-}
-
-function isNode(x: StatementNode | Node): x is Node {
-  return x instanceof Node
+  src: StatementVertex
+  dst: StatementVertex
 }
 
 export class Graph {
-  #nodes: Map<string, StatementNode>
+  #nodes: Map<string, StatementVertex>
   #edges: Relation[]
 
   constructor() {
@@ -72,14 +64,15 @@ export class Graph {
     this.#edges = []
   }
 
-  addNode(node: StatementNode | Node): void {
-    const n: StatementNode = isNode(node)
-      ? new StatementNode({
-          node,
-          isDeclaration: /Declaration/.test(node.type),
-          isTerminal: false
-        })
-      : node
+  addVertex(node: StatementVertex | StatementType): void {
+    const n: StatementVertex =
+      node instanceof StatementVertex
+        ? node
+        : new StatementVertex({
+            node,
+            isDeclaration: /Declaration/.test(node.type),
+            isTerminal: false
+          })
 
     if (!this.#nodes.has(n.id)) {
       // console.error('Original', this.nodes[node.id])
@@ -91,12 +84,10 @@ export class Graph {
   }
 
   addEdge(edge: RelationProps): void {
-    const src: StatementNode = isNode(edge.src)
-      ? this.getNode(edge.src)
-      : edge.src
-    const dst: StatementNode = isNode(edge.dst)
-      ? this.getNode(edge.dst)
-      : edge.dst
+    const src: StatementVertex =
+      edge.src instanceof StatementVertex ? edge.src : this.getVertex(edge.src)
+    const dst: StatementVertex =
+      edge.dst instanceof StatementVertex ? edge.dst : this.getVertex(edge.dst)
 
     if (!src || !this.#nodes.has(src.id)) {
       throw new Error(`Missing source node: ${src.id}`)
@@ -115,19 +106,48 @@ export class Graph {
     })
   }
 
-  getNode(id: string | Node): StatementNode {
-    let key: string = id as string
-    if (id instanceof Node) key = hash(id)
-    if (this.#nodes.has(key)) return this.#nodes.get(key)
-    return null
-    // throw new Error(`Node with id ${key} does not exist.`)
+  // getNode(id: string | Node): StatementNode {
+  //   let key: string
+  //   if (id instanceof Node) key = hash(id)
+  //   else key = id
+  //   if (this.#nodes.has(key)) return this.#nodes.get(key)
+  //   return null
+  //   // throw new Error(`Node with id ${key} does not exist.`)
+  // }
+  getVertex(node: estree.Node): StatementVertex {
+    const [start, end] = node.range!
+    // console.log(`Checking for: ${node.type}${start},${end}`)
+    let currVertex: StatementVertex = null
+    let currDist: number = 0
+    const pow2dist = (vs: number, ve: number): number =>
+      Math.pow(Math.abs(vs - start), 2) + Math.pow(Math.abs(ve - end), 2)
+    for (const [i, vertex] of this.#nodes) {
+      // console.log(
+      //   `Testing ${i} vertex: ${vertex.node.type}${vertex.start},${vertex.end}`
+      // )
+      if (currVertex == null) {
+        currVertex = vertex
+        currDist = pow2dist(vertex.start, vertex.end)
+      }
+      if (vertex.start <= start && vertex.end >= end) {
+        // console.log(
+        //   `Last vertex was ${lastVertex.start},${lastVertex.end}. Swapped.`
+        // )
+        const dist = pow2dist(vertex.start, vertex.end)
+        if (dist < currDist) {
+          currVertex = vertex
+          currDist = dist
+        }
+      }
+    }
+    return currVertex
   }
 
-  getAllNodes(): StatementNode[] {
+  getAllVertices(): StatementVertex[] {
     return [...this.#nodes.values()]
   }
 
-  getEdgeByNode(node: StatementNode): Relation[] {
+  getEdgeByVertex(node: StatementVertex): Relation[] {
     const { id } = node
 
     return this.#edges.filter(edge => edge.src.id === id || edge.dst.id === id)
@@ -141,12 +161,14 @@ export class Graph {
     return this.#edges.length
   }
 
-  getNodesSize(): number {
+  getVerticesSize(): number {
     return this.#nodes.size
   }
 
   toString(): string {
-    const nodes: string = this.getAllNodes().join(';')
+    const nodes: string = this.getAllVertices()
+      .filter(n => n.node.loc != null)
+      .join(';')
     const edges: string = this.#edges
       .map(
         edge =>

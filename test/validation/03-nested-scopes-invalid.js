@@ -1,5 +1,3 @@
-function calculateMonthlyPayment() {}
-
 let calculateAmortization = (principal, years, rate) => {
   let { monthlyRate, monthlyPayment } = calculateMonthlyPayment(
     principal,
@@ -18,7 +16,10 @@ let calculateAmortization = (principal, years, rate) => {
       principalY = principalY + principalM
       balance = balance - principalM
     }
-    amortization.push({ principalY, interestY, balance })
+
+    if (balance > 0) {
+      amortization.push({ principalY, interestY, balance })
+    }
   }
   return { monthlyPayment, monthlyRate, amortization }
 }
