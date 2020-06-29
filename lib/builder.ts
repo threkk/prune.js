@@ -1,7 +1,7 @@
 import { PathLike } from 'fs'
 import { ASTManager, VariableTypes, isStatementType } from './ast'
 import { Graph, Relationship } from './graph'
-import { BUILTINS } from './builtin'
+import { JS_BUILTINS } from './builtin'
 import { resolve, join } from 'path'
 import * as estraverse from 'estraverse'
 import * as estree from 'estree'
@@ -30,15 +30,10 @@ export class GraphBuilder {
 
         // 2. Get the last statement the identifier found.
         if (isStatementType(node)) {
-          this.#graph.addVertex(node)
+          this.#graph.addVertex({ node, scope: currentScope })
           statements.push(node)
         }
 
-        // 1. Get all the identifiers.
-        if (node.type === 'Identifier') {
-          const prev = statements[statements.length - 1]
-          this.#am.trackNode({ id: node as any, st: prev, sc: currentScope })
-        }
         // We need to accomplish 3 things:
       },
       leave: (node: estree.Node) => {
@@ -57,47 +52,25 @@ export class GraphBuilder {
     return this
   }
 
-  populateBuiltins(): GraphBuilder {
-    const firstNode = this.#am.ast as estree.Program
-
-    const addBuiltin = (name: string) => {
-      const id: estree.Identifier = {
-        type: 'Identifier',
-        name,
-        loc: null,
-        range: firstNode.range
-      }
-      this.#am.trackNode({ id, st: firstNode, sc: this.#am.sm.globalScope })
-    }
-
-    BUILTINS.forEach(builtin => addBuiltin(builtin))
-
-    return this
-  }
-
   addReadWriteRelantionships(): GraphBuilder {
-    // A)
-    // For each node
-    // Look for all identifiers.
-    // For each identifier.
-    // Look for the declaration.
-    // Look for the last write
-    // If they are not null, create a relationship
-    //
-    // B)
-    // For eacg scope, we visit all the references in every escope.
-
     for (const scope of this.#am.sm.scopes) {
       const lastW = new Map()
       for (const ref of scope.references) {
         // const statement = this.#am.lookupStatement(ref.identifier as any)
-        const statement = this.#graph.getVertex(ref.identifier as any)
-        if (statement == null || !ref.resolved) continue
+        const statement = this.#graph.getVertex(ref.identifier)
+        if (statement == null || !ref.resolved) {
+          if (ref.identifier.name in JS_BUILTINS) {
+            statement.isTerminal = JS_BUILTINS[ref.identifier.name]
+          }
+          continue
+        }
 
         const { name } = ref.identifier
 
         if (!lastW.has(name)) {
-          const dcl = this.#am.lookupDeclarationStatament(ref.identifier as any)
+          const defs = ref.resolved.defs
+          const dcl = defs[defs.length - 1].parent ?? defs[defs.length - 1].node
+          // const dcl = this.#am.lookupDeclarationStatament(ref.identifier)
           if (dcl) lastW.set(name, dcl)
         }
 
@@ -115,7 +88,7 @@ export class GraphBuilder {
           }
           this.#graph.addEdge({
             dst,
-            src: statement,
+            src: statement.node,
             rel,
             var: name
           })
@@ -124,11 +97,11 @@ export class GraphBuilder {
         if (ref.isWrite() || ref.isReadWrite()) {
           this.#graph.addEdge({
             dst,
-            src: statement,
+            src: statement.node,
             rel: Relationship.WRITE,
             var: name
           })
-          lastW.set(name, statement)
+          lastW.set(name, statement.node)
         }
       }
     }
@@ -138,7 +111,7 @@ export class GraphBuilder {
   linkCallParameters(): GraphBuilder {
     let currentScope = this.#am.sm.acquire(this.#am.ast)
 
-    const checkParameter = (param, index: number) =>
+    const checkParameter = (param: estree.Node, index: number) =>
       estraverse.traverse(param, {
         enter: (node: estree.Node) => {
           // Recursion control
@@ -146,52 +119,60 @@ export class GraphBuilder {
 
           if (/Identifier/.test(node.type)) {
             // 1. Search for its resolution.
-            const dst = this.#am.lookupDeclarationStatament(
-              node as estree.Identifier
-            )
-            // 2. Link statement with the
-            if (dst) {
-              // const src = this.#am.lookupStatement(node as Node)
-              const src = this.#graph.getVertex(node)
-              this.#graph.addEdge({
-                dst,
-                src,
-                index,
-                var: (node as any).name,
-                rel: Relationship.PARAM
-              })
+            const variables = [...currentScope.variables]
+            let recScope = currentScope
+            while (variables.length > 0) {
+              const v = variables.pop()
+
+              if (v.name === (node as estree.Identifier).name) {
+                const dst = v.defs[v.defs.length - 1].node
+                // 2. Link statement with the
+                const src = this.#graph.getVertex(node)
+                this.#graph.addEdge({
+                  dst,
+                  src: src.node,
+                  index,
+                  var: (node as any).name,
+                  rel: Relationship.PARAM
+                })
+              }
+
+              if (variables.length === 0 && recScope.upper != null) {
+                recScope = recScope.upper
+                variables.push(...recScope.variables)
+              }
             }
           }
         }
       })
 
-    const checkArgument = (arg, index: number) => {
+    const checkArgument = (arg: estree.Node, index: number) => {
       estraverse.traverse(arg, {
         enter: node => {
           if (/Identifier/.test(node.type)) {
-            currentScope.variables
-              .filter(v => v.name === (node as any).name)
-              .forEach(v => {
-                if (v.defs[0] != null && v.references[0] != null) {
-                  const src = this.#graph.getVertex(v.defs[0].node)
-                  // const dst = this.#am.lookupStatement(
-                  //   v.references[0].identifier as any
-                  // )
-                  const dst = this.#graph.getVertex(
-                    v.references[0].identifier as any
-                  )
+            for (const v of currentScope.variables) {
+              if (
+                v.name === (node as estree.Identifier).name &&
+                v.defs[0] != null &&
+                v.references[0] != null
+              ) {
+                // We get the vertex of the first declaration, which will be in
+                // the function.
+                const src = this.#graph.getVertex(v.defs[0].node)
+                // and link it to the first appearece of the variable.
+                const dst = this.#graph.getVertex(v.references[0].identifier)
 
-                  if (src != null && dst != null) {
-                    this.#graph.addEdge({
-                      src,
-                      dst,
-                      index,
-                      var: v.name,
-                      rel: Relationship.ARG
-                    })
-                  }
+                if (src != null && dst != null) {
+                  this.#graph.addEdge({
+                    src: src.node,
+                    dst: dst.node,
+                    index,
+                    var: v.name,
+                    rel: Relationship.ARG
+                  })
                 }
-              })
+              }
+            }
           }
         }
       })
@@ -233,12 +214,11 @@ export class GraphBuilder {
 
 const gb = new GraphBuilder(
   // resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
-  // resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
-  resolve(join(process.cwd(), './test/validation/05-control-flow-valid.js'))
+  resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
+  // resolve(join(process.cwd(), './test/validation/05-control-flow-valid.js'))
 )
 
 gb.generateVertices()
-  .populateBuiltins()
   .addReadWriteRelantionships()
   .linkCallParameters()
   .printAsDot()

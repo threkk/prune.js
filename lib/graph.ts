@@ -1,6 +1,7 @@
 import * as estree from 'estree'
 import hash from './util/hash'
-import { StatementType, isStatementType } from './ast'
+import { StatementType } from './ast'
+import { Scope } from 'eslint-scope'
 
 export enum Relationship {
   CALL = 'CALL', // Source calls the destination.
@@ -18,7 +19,9 @@ export enum Relationship {
 interface StatementVertexProps {
   node: StatementType
   isTerminal: boolean
+  isBuiltin: boolean
   isDeclaration: boolean
+  scope: Scope
 }
 
 export class StatementVertex {
@@ -26,14 +29,18 @@ export class StatementVertex {
   start: number
   end: number
   node: StatementType
+  scope: Scope
   isTerminal: boolean
   isDeclaration: boolean
+  isBuiltin: boolean
 
   constructor(props: StatementVertexProps) {
     this.id = hash(props.node)
     this.node = props.node
     this.isTerminal = props.isTerminal
     this.isDeclaration = props.isDeclaration
+    this.isBuiltin = props.isBuiltin
+    this.scope = props.scope
     ;[this.start, this.end] = props.node.range!
   }
 
@@ -42,17 +49,20 @@ export class StatementVertex {
   }
 }
 
-export interface RelationProps {
-  src: StatementVertex | StatementType
-  dst: StatementVertex | StatementType
+interface Relation {
+  src: StatementVertex
+  dst: StatementVertex
   rel: Relationship
   var?: string
   index?: number
 }
 
-interface Relation extends RelationProps {
-  src: StatementVertex
-  dst: StatementVertex
+export interface RelationProps {
+  src: StatementType
+  dst: StatementType
+  rel: Relationship
+  var?: string
+  index?: number
 }
 
 export class Graph {
@@ -64,30 +74,28 @@ export class Graph {
     this.#edges = []
   }
 
-  addVertex(node: StatementVertex | StatementType): void {
-    const n: StatementVertex =
-      node instanceof StatementVertex
-        ? node
-        : new StatementVertex({
-            node,
-            isDeclaration: /Declaration/.test(node.type),
-            isTerminal: false
-          })
+  addVertex(
+    props: Partial<StatementVertexProps> & { node: StatementType; scope: Scope }
+  ): void {
+    const defaultProps = {
+      isDeclaration: /Declaration/.test(props.node.type),
+      isTerminal: false,
+      isBuiltin: false
+    }
 
-    if (!this.#nodes.has(n.id)) {
-      // console.error('Original', this.nodes[node.id])
-      // console.error('New', node)
-      // throw new Error(`Duplicated node id: ${node.id}`)
+    const vertex: StatementVertex = new StatementVertex({
+      ...defaultProps,
+      ...props
+    })
 
-      this.#nodes.set(n.id, n)
+    if (!this.#nodes.has(vertex.id)) {
+      this.#nodes.set(vertex.id, vertex)
     }
   }
 
   addEdge(edge: RelationProps): void {
-    const src: StatementVertex =
-      edge.src instanceof StatementVertex ? edge.src : this.getVertex(edge.src)
-    const dst: StatementVertex =
-      edge.dst instanceof StatementVertex ? edge.dst : this.getVertex(edge.dst)
+    const src = this.getVertex(edge.src)
+    const dst = this.getVertex(edge.dst)
 
     if (!src || !this.#nodes.has(src.id)) {
       throw new Error(`Missing source node: ${src.id}`)
@@ -106,33 +114,18 @@ export class Graph {
     })
   }
 
-  // getNode(id: string | Node): StatementNode {
-  //   let key: string
-  //   if (id instanceof Node) key = hash(id)
-  //   else key = id
-  //   if (this.#nodes.has(key)) return this.#nodes.get(key)
-  //   return null
-  //   // throw new Error(`Node with id ${key} does not exist.`)
-  // }
   getVertex(node: estree.Node): StatementVertex {
     const [start, end] = node.range!
-    // console.log(`Checking for: ${node.type}${start},${end}`)
     let currVertex: StatementVertex = null
     let currDist: number = 0
     const pow2dist = (vs: number, ve: number): number =>
       Math.pow(Math.abs(vs - start), 2) + Math.pow(Math.abs(ve - end), 2)
-    for (const [i, vertex] of this.#nodes) {
-      // console.log(
-      //   `Testing ${i} vertex: ${vertex.node.type}${vertex.start},${vertex.end}`
-      // )
+    for (const [, vertex] of this.#nodes) {
       if (currVertex == null) {
         currVertex = vertex
         currDist = pow2dist(vertex.start, vertex.end)
       }
       if (vertex.start <= start && vertex.end >= end) {
-        // console.log(
-        //   `Last vertex was ${lastVertex.start},${lastVertex.end}. Swapped.`
-        // )
         const dist = pow2dist(vertex.start, vertex.end)
         if (dist < currDist) {
           currVertex = vertex
