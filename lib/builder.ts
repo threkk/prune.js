@@ -1,30 +1,41 @@
-import { PathLike } from 'fs'
-import { ASTManager, VariableTypes, isStatementType } from './ast'
-import { Graph, Relationship } from './graph'
+import { Graph, Relationship, isStatementType } from './graph'
 import { JS_BUILTINS } from './builtin'
-import { resolve, join } from 'path'
 import * as estraverse from 'estraverse'
 import * as estree from 'estree'
+import { ScopeManager } from 'eslint-scope'
+
+enum VariableTypes {
+  CATCH_CLAUSE = 'CatchClause',
+  PARAMETER = 'Parameter',
+  FUNCTION_NAME = 'FunctionName',
+  CLASS_NAME = 'ClassName',
+  VARIABLE = 'Variable',
+  IMPORT_BINDING = 'ImportBinding',
+  TDZ = 'TDZ',
+  IMPLICIT_GLOBAL = 'ImplicitGlobalVariable'
+}
 
 export class GraphBuilder {
   #graph: Graph
-  #am: ASTManager
+  #sm: ScopeManager
+  #ast: estree.Node
 
-  constructor(path: PathLike) {
+  constructor(ast: estree.Node, sm: ScopeManager) {
     this.#graph = new Graph()
-    this.#am = new ASTManager(path)
+    this.#sm = sm
+    this.#ast = ast
   }
 
   generateVertices(): GraphBuilder {
-    let currentScope = this.#am.sm.acquire(this.#am.ast)
+    let currentScope = this.#sm.acquire(this.#ast)
     const statements = []
-    estraverse.traverse(this.#am.ast, {
+    estraverse.traverse(this.#ast, {
       enter: (node: estree.Node) => {
         //
         // 3. Get the current context.
         // /Function|Catch|With|Module|Class|Switch|For|Block/.test(node.type)
         if (/Function/.test(node.type)) {
-          const funcScope = this.#am.sm.acquire(node)
+          const funcScope = this.#sm.acquire(node)
           if (funcScope) currentScope = funcScope
         }
 
@@ -53,7 +64,7 @@ export class GraphBuilder {
   }
 
   addReadWriteRelantionships(): GraphBuilder {
-    for (const scope of this.#am.sm.scopes) {
+    for (const scope of this.#sm.scopes) {
       const lastW = new Map()
       for (const ref of scope.references) {
         // const statement = this.#am.lookupStatement(ref.identifier as any)
@@ -109,7 +120,7 @@ export class GraphBuilder {
   }
 
   linkCallParameters(): GraphBuilder {
-    let currentScope = this.#am.sm.acquire(this.#am.ast)
+    let currentScope = this.#sm.acquire(this.#ast)
 
     const checkParameter = (param: estree.Node, index: number) =>
       estraverse.traverse(param, {
@@ -178,10 +189,10 @@ export class GraphBuilder {
       })
     }
 
-    estraverse.traverse(this.#am.ast as any, {
+    estraverse.traverse(this.#ast as any, {
       enter: node => {
         if (/Function/.test(node.type)) {
-          const funcScope = this.#am.sm.acquire(node)
+          const funcScope = this.#sm.acquire(node)
           if (funcScope) currentScope = funcScope
 
           for (let idx = 0; idx < (node as any).params.length; idx++) {
@@ -203,22 +214,7 @@ export class GraphBuilder {
     return this
   }
 
-  printAsDot(): GraphBuilder {
-    console.log(this.#graph.toString())
-    // this.#graph
-    //   .getAllNodes()
-    //   .forEach((v, i) => console.log(`Statement ${i}: ${v.start},${v.end}`))
-    return this
+  getGraph(): Graph {
+    return this.#graph
   }
 }
-
-const gb = new GraphBuilder(
-  // resolve(join(process.cwd(), './test/validation/03-nested-scopes-invalid.js'))
-  resolve(join(process.cwd(), './test/validation/04-function-call-valid.js'))
-  // resolve(join(process.cwd(), './test/validation/05-control-flow-valid.js'))
-)
-
-gb.generateVertices()
-  .addReadWriteRelantionships()
-  .linkCallParameters()
-  .printAsDot()

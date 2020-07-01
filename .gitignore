@@ -91,3 +91,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Graph
+graph_*

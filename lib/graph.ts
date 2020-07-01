@@ -1,19 +1,10 @@
-import * as estree from 'estree'
+import { Statement, Declaration, Program, Node } from 'estree'
 import hash from './util/hash'
-import { StatementType } from './ast'
 import { Scope } from 'eslint-scope'
 
-export enum Relationship {
-  CALL = 'CALL', // Source calls the destination.
-  READ = 'READ', // Source reads the destination.
-  WRITE = 'WRITE', // Source writes at the destination.
-  READ_PROP = 'READ_PROP', // Source reads a property of destination.
-  WRITE_PROP = 'WRITE_PROP', // Source writes a property of destination.
-  DELETE_PROP = 'DELETE_PROP', // Source deletes a property of destination.
-  RETURN = 'RETURN', // Source returns a value to destination.
-  ARG = 'ARG', // Source is argument at destination.
-  PARAM = 'PARAM', // Source is a parameter at destination.
-  DECL = 'DECL' // Source is the declaration of destination.
+export type StatementType = Statement | Declaration | Program
+export function isStatementType(node: Node): node is StatementType {
+  return /Statement|Declaration/.test(node.type) || node.type === 'Program'
 }
 
 interface StatementVertexProps {
@@ -47,6 +38,19 @@ export class StatementVertex {
   toString(): string {
     return `"${this.node.loc.start.line}:${this.node.loc.start.column},${this.node.loc.end.line}:${this.node.loc.end.column}_${this.node.type}"`
   }
+}
+
+export enum Relationship {
+  CALL = 'CALL', // Source calls the destination.
+  READ = 'READ', // Source reads the destination.
+  WRITE = 'WRITE', // Source writes at the destination.
+  READ_PROP = 'READ_PROP', // Source reads a property of destination.
+  WRITE_PROP = 'WRITE_PROP', // Source writes a property of destination.
+  DELETE_PROP = 'DELETE_PROP', // Source deletes a property of destination.
+  RETURN = 'RETURN', // Source returns a value to destination.
+  ARG = 'ARG', // Source is argument at destination.
+  PARAM = 'PARAM', // Source is a parameter at destination.
+  DECL = 'DECL' // Source is the declaration of destination.
 }
 
 interface Relation {
@@ -114,7 +118,7 @@ export class Graph {
     })
   }
 
-  getVertex(node: estree.Node): StatementVertex {
+  getVertex(node: Node): StatementVertex {
     const [start, end] = node.range!
     let currVertex: StatementVertex = null
     let currDist: number = 0
