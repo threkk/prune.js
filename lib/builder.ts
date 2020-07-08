@@ -28,7 +28,6 @@ export class GraphBuilder {
 
   generateVertices(): GraphBuilder {
     let currentScope = this.#sm.acquire(this.#ast)
-    const statements = []
     estraverse.traverse(this.#ast, {
       enter: (node: estree.Node) => {
         //
@@ -40,18 +39,20 @@ export class GraphBuilder {
         }
 
         // 2. Get the last statement the identifier found.
-        if (isStatementType(node)) {
-          this.#graph.addVertex({ node, scope: currentScope })
-          statements.push(node)
+        if (isStatementType(node) && node.type !== 'BlockStatement') {
+          const vertex = { node, scope: currentScope }
+          // TODO: Move to a method within the file scanner. It is not building,
+          // it s analysis.
+          // if (/Export/.test(node.type)) {
+          //   this.#graph.addVertex({ ...vertex, isTerminal: true })
+          //   return
+          // }
+          this.#graph.addVertex(vertex)
         }
 
         // We need to accomplish 3 things:
       },
       leave: (node: estree.Node) => {
-        if (isStatementType(node)) {
-          statements.pop()
-        }
-
         if (/Function/.test(node.type)) {
           currentScope = currentScope.upper
           // TODO: Make sure that if the scope is not acquired, it doesn't go
