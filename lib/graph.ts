@@ -165,6 +165,7 @@ export class Graph {
   toString(): string {
     const nodes: string = this.getAllVertices()
       .filter(n => n.node.loc != null && n.node.type !== 'Program')
+      .map(n => n.toString() + (n.isTerminal ? '[shape=box]' : '[shape=oval]'))
       .join(';')
     const edges: string = this.#edges
       .map(

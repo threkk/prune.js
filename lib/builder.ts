@@ -41,12 +41,6 @@ export class GraphBuilder {
         // 2. Get the last statement the identifier found.
         if (isStatementType(node) && node.type !== 'BlockStatement') {
           const vertex = { node, scope: currentScope }
-          // TODO: Move to a method within the file scanner. It is not building,
-          // it s analysis.
-          // if (/Export/.test(node.type)) {
-          //   this.#graph.addVertex({ ...vertex, isTerminal: true })
-          //   return
-          // }
           this.#graph.addVertex(vertex)
         }
 
