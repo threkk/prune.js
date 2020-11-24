@@ -26,30 +26,27 @@
   },
   "homepage": "https://github.com/threkk/prune.js#readme",
   "dependencies": {
-    "@types/eslint-scope": "^3.7.0",
-    "@types/estraverse": "0.0.6",
-    "@types/estree": "0.0.45",
-    "@types/jest": "^25.1.2",
-    "@types/node": "^13.7.0",
-    "acorn": "^7.1.1",
-    "acorn-jsx": "^5.1.0",
-    "acorn-walk": "^7.1.1",
     "chalk": "^3.0.0",
     "commander": "^4.1.1",
     "eslint-scope": "^5.0.0",
     "espree": "^7.1.0",
     "estraverse": "^4.3.0",
     "globby": "^11.0.0",
-    "prettier": "^2.0.0",
-    "ts-node": "^8.10.1",
-    "typescript": "^3.8.3",
     "winston": "^3.2.1"
   },
   "engines": {
     "node": ">=8.0.0"
   },
   "devDependencies": {
+    "@types/eslint-scope": "^3.7.0",
+    "@types/estraverse": "0.0.6",
+    "@types/estree": "0.0.45",
+    "@types/jest": "^25.1.2",
+    "@types/node": "^13.7.0",
     "jest": "^25.1.0",
-    "ts-jest": "^25.2.0"
+    "prettier": "^2.0.0",
+    "ts-jest": "^25.2.0",
+    "ts-node": "^8.10.1",
+    "typescript": "^3.9.7"
   }
 }
