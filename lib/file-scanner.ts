@@ -10,6 +10,9 @@ import { Options, parse } from 'espree'
 import { Graph, Relationship } from './graph'
 import { GraphBuilder } from './builder'
 
+const MODULE_DEFAULT = Symbol('__PRUNE_MODULE_DEFAULT')
+const MODULE_NAMESPACE = Symbol('__PRUNE_MODULE_NAMESPACE')
+
 export interface FileContent {
   path: PathLike
   content: string
@@ -17,10 +20,12 @@ export interface FileContent {
 
 type Import = {
   type: 'path' | 'package'
-  name?: string
+  local: string
+  imported: string | symbol
+  path: string
 }
 
-export class FileScanner {
+export class SourceFile {
   #path: Readonly<PathLike>
   #sm: Readonly<ScopeManager>
   #ast: Readonly<estree.Node>
@@ -31,6 +36,8 @@ export class FileScanner {
   constructor(path: PathLike, jsx: boolean = false) {
     this.#path = path
     this.#graph = null
+    this.#imports = []
+    this.#exports = []
 
     const content: string = readFileSync(this.#path as PathLike, 'utf-8')
     const options: Options = {
@@ -42,23 +49,23 @@ export class FileScanner {
       locations: true,
       ecmaFeatures: {
         jsx,
-        globalReturn: true
-      }
+        globalReturn: true,
+      },
     }
 
     this.#ast = parse(content, options)
     this.#sm = analyze(this.#ast, {
       ecmaVersion: 10, // Matching versions.
       ignoreEval: true, // Could be enabled if considered.
-      sourceType: 'module' // ES6 support
+      sourceType: 'module', // ES6 support
     })
 
-    this.__build()
-    this.__registerExports()
-    this.__registerImports()
+    this.build()
+    this.registerExports()
+    this.registerImports()
   }
 
-  __build() {
+  private build() {
     const gb = new GraphBuilder(this.#ast, this.#sm)
     this.#graph = gb
       .generateVertices()
@@ -67,7 +74,7 @@ export class FileScanner {
       .getGraph()
   }
 
-  __registerExports() {
+  private registerExports() {
     for (const vertex of this.#graph.getAllVertices()) {
       traverse(vertex.node, {
         enter: (node: estree.Node) => {
@@ -87,26 +94,93 @@ export class FileScanner {
               }
             }
           }
-        }
+        },
       })
     }
   }
 
-  __registerImports() {
+  private registerImports() {
     for (const vertex of this.#graph.getAllVertices()) {
       traverse(vertex.node, {
         enter: (node: estree.Node) => {
+          // import a from 'a'
           if (node.type === 'ImportDeclaration') {
+            const importType = isRequirePath(node.source.value.toString())
+              ? 'path'
+              : 'package'
             for (const spec of node.specifiers) {
-              this.#imports.push({
-                name: (spec as estree.ImportSpecifier).imported.name,
-                type: isRequirePath(node.source.value as string)
-                  ? 'path'
-                  : 'package'
-              })
+              switch (spec.type) {
+                case 'ImportDefaultSpecifier':
+                  this.#imports.push({
+                    local: spec.local.name,
+                    imported: MODULE_DEFAULT,
+                    type: importType,
+                    path: node.source.value.toString(),
+                  })
+                  break
+                case 'ImportNamespaceSpecifier':
+                  this.#imports.push({
+                    local: spec.local.name,
+                    imported: MODULE_NAMESPACE,
+                    type: importType,
+                    path: node.source.value.toString(),
+                  })
+                  break
+                case 'ImportSpecifier':
+                  this.#imports.push({
+                    local: spec.local.name,
+                    imported: spec.imported.name,
+                    type: importType,
+                    path: node.source.value.toString(),
+                  })
+                  break
+                default:
+              }
             }
           }
-        }
+
+          // const x = require('x')
+          if (node.type === 'VariableDeclaration') {
+            for (const declarator of node.declarations) {
+              const reqImport = getRequireImport(declarator.init)
+
+              if (reqImport != null) {
+                switch (declarator.id.type) {
+                  case 'Identifier':
+                    this.#imports.push({
+                      local: declarator.id.name,
+                      imported: MODULE_NAMESPACE,
+                      type: reqImport.type!,
+                      path: reqImport.path!,
+                    })
+                    break
+                  // const [a, b] = require('c')
+                  case 'ArrayPattern':
+                    break
+                  // const { a, b: c } = require('d')
+                  case 'ObjectPattern':
+                    break
+
+                  // const { a = b } = require('c')
+                  case 'AssignmentPattern':
+                    break
+                  case 'RestElement':
+                  // Invalid for the case, skipping.
+                }
+              }
+            }
+          }
+
+          // x = require('y')
+          // x,y = require('z')
+          if (node.type === 'AssignmentExpression') {
+          }
+
+          // require('z')
+          // This is important for expressions executed in the main thread.
+          if (node.type === 'CallExpression') {
+          }
+        },
       })
     }
   }
@@ -124,8 +198,9 @@ export class FileScanner {
   }
 }
 
-function isModuleExports(node: estree.Node): boolean {
+function isModuleExports(node?: estree.Node): boolean {
   return (
+    typeof node != null &&
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     node.object.name === 'module' &&
@@ -136,14 +211,72 @@ function isModuleExports(node: estree.Node): boolean {
 
 function isRequirePath(str: string): boolean {
   // https://nodejs.org/en/knowledge/getting-started/what-is-require/
-  return str.startsWith('./') || str.startsWith('/')
+  return str.startsWith('./') || str.startsWith('/') || str.startsWith('../')
+}
+
+function getRequireImport(node: estree.Node): Partial<Import> | null {
+  if (
+    node.type === 'CallExpression' &&
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'require' &&
+    node.arguments.length === 1 &&
+    node.arguments[0].type === 'Literal'
+  ) {
+    return {
+      path: (node.arguments[0] as estree.Literal).raw,
+      type: isRequirePath(node.arguments[0].raw) ? 'path' : 'package',
+    }
+  }
+
+  return null
+}
+
+function getPatternIds(
+  node: estree.Pattern
+): { local: string; imported: string }[] {
+  const patterns: { pattern: estree.Pattern; id?: string }[] = [
+    { pattern: node },
+  ]
+  const ids: { local: string; imported: string }[] = []
+
+  while (patterns.length > 0) {
+    const { pattern, id } = patterns.pop()
+
+    if (pattern.type === 'ArrayPattern') {
+      if (pattern.elements != null) {
+        for (const element of pattern.elements) {
+          patterns.push({ pattern: element })
+        }
+      }
+    } else if (pattern.type === 'ObjectPattern') {
+      for (const prop of pattern.properties) {
+        if (prop.type === 'RestElement') {
+          patterns.push({ pattern: prop })
+        } else {
+          const key =
+            prop.key.type === 'Identifier'
+              ? prop.key.name
+              : (prop.key as estree.Literal).raw!
+          patterns.push({ pattern: prop.value, id: key })
+        }
+      }
+    } else if (pattern.type === 'Identifier') {
+      const { name } = pattern
+      ids.push({
+        local: id ?? name,
+        imported: name,
+      })
+    }
+  }
+  return ids
 }
 
 const file = resolve(
   // join(process.cwd(), './test/validation/03-nested-scopes-invalid.js')
   // join(process.cwd(), './test/validation/04-function-call-valid.js')
-  join(process.cwd(), './test/validation/05-control-flow-valid.js')
+  // join(process.cwd(), './test/validation/05-control-flow-valid.js')
   // join(process.cwd(), './test/validation/06-exports-invalid.js')
+  join(process.cwd(), './test/validation/07-commonjs-valid.js')
 )
-const fs = new FileScanner(file)
+const fs = new SourceFile(file)
 fs.printGraph()
