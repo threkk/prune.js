@@ -12,8 +12,11 @@ enum VariableTypes {
   VARIABLE = 'Variable',
   IMPORT_BINDING = 'ImportBinding',
   TDZ = 'TDZ',
-  IMPLICIT_GLOBAL = 'ImplicitGlobalVariable'
+  IMPLICIT_GLOBAL = 'ImplicitGlobalVariable',
 }
+
+// const FUNC_SCOPE = /Function|Catch|With|Module|Class|Switch|For|Block/
+const FUNC_SCOPE = /Function|With|Module|Class/
 
 export class GraphBuilder {
   #graph: Graph
@@ -33,7 +36,7 @@ export class GraphBuilder {
         //
         // 3. Get the current context.
         // /Function|Catch|With|Module|Class|Switch|For|Block/.test(node.type)
-        if (/Function/.test(node.type)) {
+        if (FUNC_SCOPE.test(node.type)) {
           const funcScope = this.#sm.acquire(node)
           if (funcScope) currentScope = funcScope
         }
@@ -47,12 +50,12 @@ export class GraphBuilder {
         // We need to accomplish 3 things:
       },
       leave: (node: estree.Node) => {
-        if (/Function/.test(node.type)) {
+        if (FUNC_SCOPE.test(node.type)) {
           currentScope = currentScope.upper
           // TODO: Make sure that if the scope is not acquired, it doesn't go
           // up.
         }
-      }
+      },
     })
 
     return this
@@ -96,7 +99,7 @@ export class GraphBuilder {
             dst,
             src: statement.node,
             rel,
-            var: name
+            var: name,
           })
         }
 
@@ -105,7 +108,7 @@ export class GraphBuilder {
             dst,
             src: statement.node,
             rel: Relationship.WRITE,
-            var: name
+            var: name,
           })
           lastW.set(name, statement.node)
         }
@@ -139,7 +142,7 @@ export class GraphBuilder {
                   src: src.node,
                   index,
                   var: (node as any).name,
-                  rel: Relationship.PARAM
+                  rel: Relationship.PARAM,
                 })
               }
 
@@ -149,12 +152,12 @@ export class GraphBuilder {
               }
             }
           }
-        }
+        },
       })
 
     const checkArgument = (arg: estree.Node, index: number) => {
       estraverse.traverse(arg, {
-        enter: node => {
+        enter: (node) => {
           if (/Identifier/.test(node.type)) {
             for (const v of currentScope.variables) {
               if (
@@ -174,19 +177,19 @@ export class GraphBuilder {
                     dst: dst.node,
                     index,
                     var: v.name,
-                    rel: Relationship.ARG
+                    rel: Relationship.ARG,
                   })
                 }
               }
             }
           }
-        }
+        },
       })
     }
 
     estraverse.traverse(this.#ast as any, {
-      enter: node => {
-        if (/Function/.test(node.type)) {
+      enter: (node) => {
+        if (FUNC_SCOPE.test(node.type)) {
           const funcScope = this.#sm.acquire(node)
           if (funcScope) currentScope = funcScope
 
@@ -200,11 +203,11 @@ export class GraphBuilder {
           }
         }
       },
-      leave: node => {
-        if (/Function/.test(node.type)) {
+      leave: (node) => {
+        if (FUNC_SCOPE.test(node.type)) {
           currentScope = currentScope.upper
         }
-      }
+      },
     })
     return this
   }

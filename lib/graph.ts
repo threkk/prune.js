@@ -50,7 +50,7 @@ export enum Relationship {
   RETURN = 'RETURN', // Source returns a value to destination.
   ARG = 'ARG', // Source is argument at destination.
   PARAM = 'PARAM', // Source is a parameter at destination.
-  DECL = 'DECL' // Source is the declaration of destination.
+  DECL = 'DECL', // Source is the declaration of destination.
 }
 
 interface Relation {
@@ -84,12 +84,12 @@ export class Graph {
     const defaultProps = {
       isDeclaration: /Declaration/.test(props.node.type),
       isTerminal: false,
-      isBuiltin: false
+      isBuiltin: false,
     }
 
     const vertex: StatementVertex = new StatementVertex({
       ...defaultProps,
-      ...props
+      ...props,
     })
 
     if (!this.#nodes.has(vertex.id)) {
@@ -114,7 +114,7 @@ export class Graph {
       dst,
       rel: edge.rel,
       index: edge.index,
-      var: edge.var
+      var: edge.var,
     })
   }
 
@@ -147,7 +147,9 @@ export class Graph {
   getEdgeByVertex(node: StatementVertex): Relation[] {
     const { id } = node
 
-    return this.#edges.filter(edge => edge.src.id === id || edge.dst.id === id)
+    return this.#edges.filter(
+      (edge) => edge.src.id === id || edge.dst.id === id
+    )
   }
 
   getAllEdges(): Relation[] {
@@ -164,12 +166,14 @@ export class Graph {
 
   toString(): string {
     const nodes: string = this.getAllVertices()
-      .filter(n => n.node.loc != null && n.node.type !== 'Program')
-      .map(n => n.toString() + (n.isTerminal ? '[shape=box]' : '[shape=oval]'))
-      .join(';')
-    const edges: string = this.#edges
+      .filter((n) => n.node.loc != null && n.node.type !== 'Program')
       .map(
-        edge =>
+        (n) => n.toString() + (n.isTerminal ? '[shape=box]' : '[shape=oval]')
+      )
+      .join(';')
+    const edges: string = this.getAllEdges()
+      .map(
+        (edge) =>
           `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
             edge.var != null ? ',var=' + edge.var : ''
           }${edge.index != null ? ',idx=' + edge.index : ''}"]`

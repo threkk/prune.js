@@ -145,27 +145,24 @@ export class SourceFile {
               const reqImport = getRequireImport(declarator.init)
 
               if (reqImport != null) {
-                switch (declarator.id.type) {
-                  case 'Identifier':
+                if (declarator.id.type === 'Identifier') {
+                  this.#imports.push({
+                    local: declarator.id.name,
+                    imported: MODULE_NAMESPACE,
+                    type: reqImport.type!,
+                    path: reqImport.path!,
+                  })
+                } else {
+                  const ids = getPatternIds(declarator.id)
+                  for (const id of ids) {
+                    const { local, imported } = id
                     this.#imports.push({
-                      local: declarator.id.name,
-                      imported: MODULE_NAMESPACE,
+                      local,
+                      imported,
                       type: reqImport.type!,
                       path: reqImport.path!,
                     })
-                    break
-                  // const [a, b] = require('c')
-                  case 'ArrayPattern':
-                    break
-                  // const { a, b: c } = require('d')
-                  case 'ObjectPattern':
-                    break
-
-                  // const { a = b } = require('c')
-                  case 'AssignmentPattern':
-                    break
-                  case 'RestElement':
-                  // Invalid for the case, skipping.
+                  }
                 }
               }
             }
@@ -191,6 +188,10 @@ export class SourceFile {
 
   getImports(): Import[] {
     return this.#imports
+  }
+
+  getGraph(): Graph {
+    return this.#graph
   }
 
   printGraph() {
@@ -242,41 +243,56 @@ function getPatternIds(
   while (patterns.length > 0) {
     const { pattern, id } = patterns.pop()
 
-    if (pattern.type === 'ArrayPattern') {
-      if (pattern.elements != null) {
-        for (const element of pattern.elements) {
-          patterns.push({ pattern: element })
+    switch (pattern.type) {
+      // const [a, b] = require('c')
+      case 'ArrayPattern':
+        if (pattern.elements != null) {
+          for (const element of pattern.elements) {
+            patterns.push({ pattern: element })
+          }
         }
-      }
-    } else if (pattern.type === 'ObjectPattern') {
-      for (const prop of pattern.properties) {
-        if (prop.type === 'RestElement') {
-          patterns.push({ pattern: prop })
-        } else {
-          const key =
-            prop.key.type === 'Identifier'
-              ? prop.key.name
-              : (prop.key as estree.Literal).raw!
-          patterns.push({ pattern: prop.value, id: key })
+        break
+      // const { a, b: c } = require('d')
+      case 'ObjectPattern':
+        for (const prop of pattern.properties) {
+          if (prop.type === 'RestElement') {
+            patterns.push({ pattern: prop })
+          } else {
+            const key =
+              prop.key.type === 'Identifier'
+                ? prop.key.name
+                : (prop.key as estree.Literal).raw!
+            patterns.push({ pattern: prop.value, id: key })
+          }
         }
-      }
-    } else if (pattern.type === 'Identifier') {
-      const { name } = pattern
-      ids.push({
-        local: id ?? name,
-        imported: name,
-      })
+        break
+      // const a = requier('b')
+      case 'Identifier':
+        const { name } = pattern
+        ids.push({
+          local: id ?? name,
+          imported: name,
+        })
+        break
+
+      // Invalid cases
+      // const { a = b } = require('c')
+      case 'AssignmentPattern':
+      // const { ...a } = require('a')
+      case 'RestElement':
+      default:
+        break
     }
+    return ids
   }
-  return ids
 }
 
-const file = resolve(
-  // join(process.cwd(), './test/validation/03-nested-scopes-invalid.js')
-  // join(process.cwd(), './test/validation/04-function-call-valid.js')
-  // join(process.cwd(), './test/validation/05-control-flow-valid.js')
-  // join(process.cwd(), './test/validation/06-exports-invalid.js')
-  join(process.cwd(), './test/validation/07-commonjs-valid.js')
-)
-const fs = new SourceFile(file)
-fs.printGraph()
+// const file = resolve(
+// join(process.cwd(), './test/validation/03-nested-scopes-invalid.js')
+// join(process.cwd(), './test/validation/04-function-call-valid.js')
+// join(process.cwd(), './test/validation/05-control-flow-valid.js')
+// join(process.cwd(), './test/validation/06-exports-invalid.js')
+// join(process.cwd(), './test/validation/07-commonjs-valid.js')
+// )
+// const fs = new SourceFile(file)
+// fs.printGraph()

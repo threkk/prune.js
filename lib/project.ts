@@ -3,10 +3,12 @@ import { extractFiles, getPackageJson } from './files'
 import { resolve, join, extname } from 'path'
 import { GraphBuilder } from './builder'
 import { Graph } from './graph'
+import { SourceFile } from './sourcefile'
 
 export default class Project {
   private root: string
   private paths: PathLike[]
+  private files: SourceFile[]
   private ignore: string[]
   private dependencies: string[]
   private entryPoints: string[]
@@ -37,7 +39,7 @@ export default class Project {
 
       if (pkg?.bin != null)
         this.entryPoints.push(
-          ...Object.values(pkg.bin as { [key: string]: string }).map(entry =>
+          ...Object.values(pkg.bin as { [key: string]: string }).map((entry) =>
             resolve(join(this.root, entry))
           )
         )
@@ -47,11 +49,24 @@ export default class Project {
 
       // Retrieve all files
       const files = extractFiles(this.root, this.ignore, ['js'])
-      this.paths.push(...files.map(f => f as string))
+      this.paths.push(...files.map((f) => f as string))
     }
   }
 
-  // public generateGraphs(): Graph[] {
-  //   return this.paths.map(p => buildGraph(p))
-  // }
+  public generateGraphs(): void {
+    this.files = this.paths.map((p) => new SourceFile(p, true))
+  }
+
+  public toDot(): string {
+    const nodes = []
+    const edges = []
+
+    for (const file of this.files) {
+      const graph = file.getGraph()
+      nodes.push(graph.getAllVertices())
+      edges.push(graph.getAllEdges())
+    }
+
+    return `digraph {  }`
+  }
 }
