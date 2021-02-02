@@ -7,7 +7,7 @@ import * as estree from 'estree'
 // @ts-ignore TS7016
 import { Options, parse } from 'espree'
 
-import { Graph, Relationship } from './graph'
+import { Graph, Relationship, StatementVertex } from './graph'
 import { GraphBuilder } from './builder'
 
 const MODULE_DEFAULT = Symbol('__PRUNE_MODULE_DEFAULT')
@@ -18,11 +18,19 @@ export interface FileContent {
   content: string
 }
 
-type Import = {
+export type Import = {
   type: 'path' | 'package'
   local: string
   imported: string | symbol
-  path: string
+  relativePath: string
+  absolutePath: string
+  vertex: StatementVertex
+}
+
+export type Export = {
+  var: string
+  vertex: StatementVertex
+  absolutePath: string
 }
 
 export class SourceFile {
@@ -30,7 +38,7 @@ export class SourceFile {
   #sm: Readonly<ScopeManager>
   #ast: Readonly<estree.Node>
   #graph: Graph
-  #exports: string[]
+  #exports: Export[]
   #imports: Import[]
 
   constructor(path: PathLike, jsx: boolean = false) {
@@ -90,7 +98,11 @@ export class SourceFile {
                 edge.rel === Relationship.READ ||
                 edge.rel === Relationship.CALL
               ) {
-                this.#exports.push(edge.var)
+                this.#exports.push({
+                  var: edge.var,
+                  vertex,
+                  absolutePath: this.getAbsFilePath() as string,
+                })
               }
             }
           }
@@ -100,6 +112,8 @@ export class SourceFile {
   }
 
   private registerImports() {
+    const getAbsolutePath = (str: string) =>
+      resolve(join(this.getAbsFilePath() as string, str))
     for (const vertex of this.#graph.getAllVertices()) {
       traverse(vertex.node, {
         enter: (node: estree.Node) => {
@@ -112,26 +126,32 @@ export class SourceFile {
               switch (spec.type) {
                 case 'ImportDefaultSpecifier':
                   this.#imports.push({
+                    vertex,
                     local: spec.local.name,
                     imported: MODULE_DEFAULT,
                     type: importType,
-                    path: node.source.value.toString(),
+                    relativePath: node.source.value.toString(),
+                    absolutePath: getAbsolutePath(node.source.value.toString()),
                   })
                   break
                 case 'ImportNamespaceSpecifier':
                   this.#imports.push({
+                    vertex,
                     local: spec.local.name,
                     imported: MODULE_NAMESPACE,
                     type: importType,
-                    path: node.source.value.toString(),
+                    relativePath: node.source.value.toString(),
+                    absolutePath: getAbsolutePath(node.source.value.toString()),
                   })
                   break
                 case 'ImportSpecifier':
                   this.#imports.push({
+                    vertex,
                     local: spec.local.name,
                     imported: spec.imported.name,
                     type: importType,
-                    path: node.source.value.toString(),
+                    relativePath: node.source.value.toString(),
+                    absolutePath: getAbsolutePath(node.source.value.toString()),
                   })
                   break
                 default:
@@ -147,20 +167,24 @@ export class SourceFile {
               if (reqImport != null) {
                 if (declarator.id.type === 'Identifier') {
                   this.#imports.push({
+                    vertex,
                     local: declarator.id.name,
                     imported: MODULE_NAMESPACE,
                     type: reqImport.type!,
-                    path: reqImport.path!,
+                    relativePath: reqImport.relativePath!,
+                    absolutePath: getAbsolutePath(reqImport.relativePath!),
                   })
                 } else {
                   const ids = getPatternIds(declarator.id)
                   for (const id of ids) {
                     const { local, imported } = id
                     this.#imports.push({
+                      vertex,
                       local,
                       imported,
                       type: reqImport.type!,
-                      path: reqImport.path!,
+                      relativePath: reqImport.relativePath!,
+                      absolutePath: getAbsolutePath(reqImport.relativePath!),
                     })
                   }
                 }
@@ -171,23 +195,55 @@ export class SourceFile {
           // x = require('y')
           // x,y = require('z')
           if (node.type === 'AssignmentExpression') {
+            const importType = getRequireImport(node.right)
+            if (importType != null) {
+              const ids =
+                node.left.type === 'Identifier'
+                  ? [{ local: node.left.name, imported: MODULE_NAMESPACE }]
+                  : getPatternIds(node.left)
+              for (const id of ids) {
+                this.#imports.push({
+                  vertex,
+                  local: id.local,
+                  imported: MODULE_NAMESPACE,
+                  type: importType.type!,
+                  relativePath: importType.relativePath!,
+                  absolutePath: getAbsolutePath(importType.relativePath!),
+                })
+              }
+            }
           }
 
           // require('z')
           // This is important for expressions executed in the main thread.
           if (node.type === 'CallExpression') {
+            const importType = getRequireImport(node)
+            if (importType != null) {
+              this.#imports.push({
+                vertex,
+                local: null,
+                imported: MODULE_NAMESPACE,
+                type: importType.type!,
+                relativePath: importType.relativePath!,
+                absolutePath: getAbsolutePath(importType.relativePath!),
+              })
+            }
           }
         },
       })
     }
   }
 
-  getExports(): string[] {
+  getExports(): Export[] {
     return this.#exports
   }
 
   getImports(): Import[] {
     return this.#imports
+  }
+
+  getAbsFilePath(): Readonly<PathLike> {
+    return this.#path
   }
 
   getGraph(): Graph {
@@ -224,7 +280,7 @@ function getRequireImport(node: estree.Node): Partial<Import> | null {
     node.arguments[0].type === 'Literal'
   ) {
     return {
-      path: (node.arguments[0] as estree.Literal).raw,
+      relativePath: (node.arguments[0] as estree.Literal).raw,
       type: isRequirePath(node.arguments[0].raw) ? 'path' : 'package',
     }
   }

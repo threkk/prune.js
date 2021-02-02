@@ -2,13 +2,15 @@ import { PathLike, lstatSync } from 'fs'
 import { extractFiles, getPackageJson } from './files'
 import { resolve, join, extname } from 'path'
 import { GraphBuilder } from './builder'
-import { Graph } from './graph'
-import { SourceFile } from './sourcefile'
+import { Graph, Relationship, Relation } from './graph'
+import { SourceFile, Import, Export } from './sourcefile'
+import { isString } from 'util'
 
 export default class Project {
   private root: string
   private paths: PathLike[]
   private files: SourceFile[]
+  private edges: Relation[]
   private ignore: string[]
   private dependencies: string[]
   private entryPoints: string[]
@@ -16,6 +18,7 @@ export default class Project {
   constructor(root: string, ignore?: string[]) {
     this.root = root
     this.ignore = ignore ?? []
+    this.edges = []
     this.paths = []
     this.dependencies = []
     this.entryPoints = []
@@ -53,20 +56,84 @@ export default class Project {
     }
   }
 
-  public generateGraphs(): void {
+  public generateGraphs(): Project {
     this.files = this.paths.map((p) => new SourceFile(p, true))
+    return this
+  }
+
+  public linkGraphs(): Project {
+    const allImports: Import[] = []
+    const allExports: { [key: string]: Export } = {}
+
+    for (const file of this.files) {
+      allImports.push(...file.getImports())
+      for (const exp of file.getExports()) {
+        allExports[exp.absolutePath] = exp
+      }
+    }
+
+    const exportPaths = Object.keys(allExports)
+    for (const imp of allImports) {
+      if (imp.type === 'path' && exportPaths.includes(imp.absolutePath)) {
+        this.edges.push({
+          src: imp.vertex,
+          dst: allExports[imp.absolutePath].vertex,
+          rel: Relationship.IMPORT,
+          var: isString(imp.imported)
+            ? imp.imported
+            : (imp.imported as Symbol).toString(),
+        })
+        this.edges.push({
+          src: allExports[imp.absolutePath].vertex,
+          dst: imp.vertex,
+          rel: Relationship.EXPORT,
+        })
+      }
+    }
+
+    return this
   }
 
   public toDot(): string {
     const nodes = []
-    const edges = []
+    const edges = [...this.edges]
 
     for (const file of this.files) {
       const graph = file.getGraph()
-      nodes.push(graph.getAllVertices())
-      edges.push(graph.getAllEdges())
+      nodes.push(...graph.getAllVertices())
+      edges.push(...graph.getAllEdges())
     }
 
-    return `digraph {  }`
+    const nodeString: string = nodes
+      .filter((n) => n.node.loc != null && n.node.type !== 'Program')
+      .map(
+        (n) => n.toString() + (n.isTerminal ? '[shape=box]' : '[shape=oval]')
+      )
+      .join(';')
+    const edgeString: string = edges
+      .map(
+        (edge) =>
+          `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
+            edge.var != null ? ',var=' + edge.var : ''
+          }${edge.index != null ? ',idx=' + edge.index : ''}"]`
+      )
+      .join(';')
+    return `digraph { ${nodeString}; ${edgeString} }`
   }
 }
+
+// const file = resolve(
+// join(process.cwd(), './test/validation/03-nested-scopes-invalid.js')
+// join(process.cwd(), './test/validation/04-function-call-valid.js')
+// join(process.cwd(), './test/validation/05-control-flow-valid.js')
+// join(process.cwd(), './test/validation/06-exports-invalid.js')
+// join(process.cwd(), './test/validation/07-commonjs-valid.js')
+// )
+const p = resolve(
+  join(process.cwd(), '../prune.js-samples/node-express-realworld-example-app')
+)
+
+const proj = new Project(
+  '../prune.js-samples/node-express-realworld-example-app'
+)
+console.log(proj.generateGraphs().linkGraphs().toDot())

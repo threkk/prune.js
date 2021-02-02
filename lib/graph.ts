@@ -51,9 +51,11 @@ export enum Relationship {
   ARG = 'ARG', // Source is argument at destination.
   PARAM = 'PARAM', // Source is a parameter at destination.
   DECL = 'DECL', // Source is the declaration of destination.
+  IMPORT = 'IMP', // Source is importing the destination.
+  EXPORT = 'EXP', // Source is exporting the destination.
 }
 
-interface Relation {
+export interface Relation {
   src: StatementVertex
   dst: StatementVertex
   rel: Relationship
