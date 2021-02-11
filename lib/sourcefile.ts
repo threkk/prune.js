@@ -1,4 +1,4 @@
-import { resolve, join } from 'path'
+import { resolve, join, parse as parsePath } from 'path'
 import { readFileSync, PathLike } from 'fs'
 import { ScopeManager, analyze } from 'eslint-scope'
 import { traverse } from 'estraverse'
@@ -74,7 +74,7 @@ export class SourceFile {
   }
 
   private build() {
-    const gb = new GraphBuilder(this.#ast, this.#sm)
+    const gb = new GraphBuilder(this.#path as string, this.#ast, this.#sm)
     this.#graph = gb
       .generateVertices()
       .addReadWriteRelantionships()
@@ -98,10 +98,13 @@ export class SourceFile {
                 edge.rel === Relationship.READ ||
                 edge.rel === Relationship.CALL
               ) {
+                // We need to remove the extension to match the imports
+                // behaviour.
+                const pathObj = parsePath(this.getAbsFilePath().toString())
                 this.#exports.push({
                   var: edge.var,
                   vertex,
-                  absolutePath: this.getAbsFilePath() as string,
+                  absolutePath: join(pathObj.dir, pathObj.name),
                 })
               }
             }
@@ -112,8 +115,17 @@ export class SourceFile {
   }
 
   private registerImports() {
+    const getRelativePath = (str: string) => str.substring(1, str.length - 1)
     const getAbsolutePath = (str: string) =>
-      resolve(join(this.getAbsFilePath() as string, str))
+      isRequirePath(str)
+        ? resolve(
+            join(
+              this.getAbsFilePath() as string,
+              str.substring(1, str.length - 1)
+            )
+          )
+        : str.substring(1, str.length - 1)
+
     for (const vertex of this.#graph.getAllVertices()) {
       traverse(vertex.node, {
         enter: (node: estree.Node) => {
@@ -130,7 +142,7 @@ export class SourceFile {
                     local: spec.local.name,
                     imported: MODULE_DEFAULT,
                     type: importType,
-                    relativePath: node.source.value.toString(),
+                    relativePath: getRelativePath(node.source.value.toString()),
                     absolutePath: getAbsolutePath(node.source.value.toString()),
                   })
                   break
@@ -140,7 +152,7 @@ export class SourceFile {
                     local: spec.local.name,
                     imported: MODULE_NAMESPACE,
                     type: importType,
-                    relativePath: node.source.value.toString(),
+                    relativePath: getRelativePath(node.source.value.toString()),
                     absolutePath: getAbsolutePath(node.source.value.toString()),
                   })
                   break
@@ -150,7 +162,7 @@ export class SourceFile {
                     local: spec.local.name,
                     imported: spec.imported.name,
                     type: importType,
-                    relativePath: node.source.value.toString(),
+                    relativePath: getRelativePath(node.source.value.toString()),
                     absolutePath: getAbsolutePath(node.source.value.toString()),
                   })
                   break
@@ -171,7 +183,7 @@ export class SourceFile {
                     local: declarator.id.name,
                     imported: MODULE_NAMESPACE,
                     type: reqImport.type!,
-                    relativePath: reqImport.relativePath!,
+                    relativePath: getRelativePath(reqImport.relativePath!),
                     absolutePath: getAbsolutePath(reqImport.relativePath!),
                   })
                 } else {
@@ -183,7 +195,7 @@ export class SourceFile {
                       local,
                       imported,
                       type: reqImport.type!,
-                      relativePath: reqImport.relativePath!,
+                      relativePath: getRelativePath(reqImport.relativePath!),
                       absolutePath: getAbsolutePath(reqImport.relativePath!),
                     })
                   }
@@ -207,7 +219,7 @@ export class SourceFile {
                   local: id.local,
                   imported: MODULE_NAMESPACE,
                   type: importType.type!,
-                  relativePath: importType.relativePath!,
+                  relativePath: getRelativePath(importType.relativePath!),
                   absolutePath: getAbsolutePath(importType.relativePath!),
                 })
               }
@@ -224,7 +236,7 @@ export class SourceFile {
                 local: null,
                 imported: MODULE_NAMESPACE,
                 type: importType.type!,
-                relativePath: importType.relativePath!,
+                relativePath: getRelativePath(importType.relativePath!),
                 absolutePath: getAbsolutePath(importType.relativePath!),
               })
             }
@@ -267,8 +279,13 @@ function isModuleExports(node?: estree.Node): boolean {
 }
 
 function isRequirePath(str: string): boolean {
+  const cleanStr = str.substring(1, str.length - 1)
   // https://nodejs.org/en/knowledge/getting-started/what-is-require/
-  return str.startsWith('./') || str.startsWith('/') || str.startsWith('../')
+  return (
+    cleanStr.startsWith('./') ||
+    cleanStr.startsWith('/') ||
+    cleanStr.startsWith('../')
+  )
 }
 
 function getRequireImport(node: estree.Node): Partial<Import> | null {
@@ -342,13 +359,3 @@ function getPatternIds(
     return ids
   }
 }
-
-// const file = resolve(
-// join(process.cwd(), './test/validation/03-nested-scopes-invalid.js')
-// join(process.cwd(), './test/validation/04-function-call-valid.js')
-// join(process.cwd(), './test/validation/05-control-flow-valid.js')
-// join(process.cwd(), './test/validation/06-exports-invalid.js')
-// join(process.cwd(), './test/validation/07-commonjs-valid.js')
-// )
-// const fs = new SourceFile(file)
-// fs.printGraph()

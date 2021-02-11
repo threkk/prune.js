@@ -23,8 +23,8 @@ export class GraphBuilder {
   #sm: ScopeManager
   #ast: estree.Node
 
-  constructor(ast: estree.Node, sm: ScopeManager) {
-    this.#graph = new Graph()
+  constructor(path: string, ast: estree.Node, sm: ScopeManager) {
+    this.#graph = new Graph(path)
     this.#sm = sm
     this.#ast = ast
   }

@@ -94,31 +94,39 @@ export default class Project {
     return this
   }
 
-  public toDot(): string {
-    const nodes = []
-    const edges = [...this.edges]
+  public toDot(withPaths: boolean = false): string {
+    const graphVerticesToString = (graph: Graph) =>
+      graph
+        .getAllVertices()
+        .filter((n) => n.node.loc != null && n.node.type !== 'Program')
+        .map(
+          (n) =>
+            `"${withPaths ? graph.getPath() : ''} ${n
+              .toString()
+              .substring(1, n.toString().length - 1)}"` +
+            (n.isTerminal ? '[shape=box]' : '[shape=oval]')
+        )
+        .join(';')
 
+    const edgesToString = (edges: Relation[]) =>
+      edges
+        .map(
+          (edge) =>
+            `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
+              edge.var != null ? ',var=' + edge.var : ''
+            }${edge.index != null ? ',idx=' + edge.index : ''}"]`
+        )
+        .join(';')
+
+    let nodes = ''
+    let edges = edgesToString(this.edges)
     for (const file of this.files) {
       const graph = file.getGraph()
-      nodes.push(...graph.getAllVertices())
-      edges.push(...graph.getAllEdges())
+      nodes += graphVerticesToString(graph)
+      edges += edgesToString(graph.getAllEdges())
     }
 
-    const nodeString: string = nodes
-      .filter((n) => n.node.loc != null && n.node.type !== 'Program')
-      .map(
-        (n) => n.toString() + (n.isTerminal ? '[shape=box]' : '[shape=oval]')
-      )
-      .join(';')
-    const edgeString: string = edges
-      .map(
-        (edge) =>
-          `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
-            edge.var != null ? ',var=' + edge.var : ''
-          }${edge.index != null ? ',idx=' + edge.index : ''}"]`
-      )
-      .join(';')
-    return `digraph { ${nodeString}; ${edgeString} }`
+    return `digraph { ${nodes}; ${edges} }`
   }
 }
 
@@ -136,4 +144,4 @@ const p = resolve(
 const proj = new Project(
   '../prune.js-samples/node-express-realworld-example-app'
 )
-console.log(proj.generateGraphs().linkGraphs().toDot())
+console.log(proj.generateGraphs().linkGraphs().toDot(true))

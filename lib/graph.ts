@@ -74,10 +74,12 @@ export interface RelationProps {
 export class Graph {
   #nodes: Map<string, StatementVertex>
   #edges: Relation[]
+  #path: string
 
-  constructor() {
+  constructor(path: string) {
     this.#nodes = new Map()
     this.#edges = []
+    this.#path = path
   }
 
   addVertex(
@@ -166,19 +168,27 @@ export class Graph {
     return this.#nodes.size
   }
 
+  getPath(): string {
+    return this.#path
+  }
+
   toString(): string {
     const nodes: string = this.getAllVertices()
       .filter((n) => n.node.loc != null && n.node.type !== 'Program')
       .map(
-        (n) => n.toString() + (n.isTerminal ? '[shape=box]' : '[shape=oval]')
+        (n) =>
+          `${this.#path} ${n.toString()}` +
+          (n.isTerminal ? '[shape=box]' : '[shape=oval]')
       )
       .join(';')
     const edges: string = this.getAllEdges()
       .map(
         (edge) =>
-          `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
-            edge.var != null ? ',var=' + edge.var : ''
-          }${edge.index != null ? ',idx=' + edge.index : ''}"]`
+          `${this.#path} ${edge.src} -> ${this.#path} ${edge.dst} [label="rel=${
+            edge.rel
+          }${edge.var != null ? ',var=' + edge.var : ''}${
+            edge.index != null ? ',idx=' + edge.index : ''
+          }"]`
       )
       .join(';')
     return `digraph { ${nodes}; ${edges} }`
