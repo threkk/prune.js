@@ -1,71 +1,58 @@
-import { PathLike, lstatSync } from 'fs'
-import { extractFiles, getPackageJson } from './files'
-import { resolve, join, extname } from 'path'
-import { GraphBuilder } from './builder'
+import { statSync } from 'fs'
+import { extractFiles, getDependenciesFromPackage } from './files'
 import { Graph, Relationship, Relation } from './graph'
 import { SourceFile, Import, Export } from './sourcefile'
 import { isString } from 'util'
 
+const DEFAULT_IGNORED = ['.git', 'node_modules']
+
+export interface ProjectProps {
+  entryPoints: string[]
+  ignore?: string[]
+  root: string
+}
+
 export default class Project {
-  private root: string
-  private paths: PathLike[]
-  private files: SourceFile[]
-  private edges: Relation[]
-  private ignore: string[]
-  private dependencies: string[]
-  private entryPoints: string[]
+  // Project configuration
+  root: Readonly<string>
+  entryPoints: Readonly<string[]>
+  ignore: Readonly<string[]>
+  paths: Readonly<string[]>
 
-  constructor(root: string, ignore?: string[]) {
-    this.root = root
-    this.ignore = ignore ?? []
-    this.edges = []
-    this.paths = []
-    this.dependencies = []
-    this.entryPoints = []
+  // Files, edges and dependencies.
+  dependencies: Readonly<string[]>
+  files: { [key: string]: SourceFile }
+  importEdges: Relation[]
 
-    // This method works with both single files and folders
-    const stats = lstatSync(this.root)
+  constructor(props: ProjectProps) {
+    this.root = props.root
+    this.entryPoints = props.entryPoints
+    this.ignore = [...DEFAULT_IGNORED, ...props.ignore] ?? [...DEFAULT_IGNORED]
 
-    // If it is single file, this is the only entry point.
-    if (stats.isFile() && extname(this.root) === '.js') {
-      this.entryPoints.push(this.root)
-      this.paths.push(this.root)
+    const root = statSync(this.root)
+
+    if (root.isFile()) {
+      this.paths = [this.root]
+      this.dependencies = []
+    } else if (root.isDirectory()) {
+      this.paths = extractFiles(this.root, {
+        ignored: [...this.ignore],
+        extensions: ['js'],
+      })
+      this.dependencies = getDependenciesFromPackage(this.root)
     }
 
-    // If it is a directory, we have some more options.
-    if (stats.isDirectory()) {
-      // Search for a package.json and populate dependencies and entry points
-      // with the contents of bin and main.
-      const pkg = getPackageJson(this.root)
-      if (pkg?.dependencies != null)
-        this.dependencies.push(...Object.keys(pkg.dependencies))
-
-      if (pkg?.bin != null)
-        this.entryPoints.push(
-          ...Object.values(pkg.bin as { [key: string]: string }).map((entry) =>
-            resolve(join(this.root, entry))
-          )
-        )
-
-      if (pkg?.main != null)
-        this.entryPoints.push(resolve(join(this.root, pkg.main)))
-
-      // Retrieve all files
-      const files = extractFiles(this.root, this.ignore, ['js'])
-      this.paths.push(...files.map((f) => f as string))
+    this.importEdges = []
+    this.files = {}
+    for (const path of this.paths) {
+      this.files[path] = new SourceFile(path, false)
     }
-  }
 
-  public generateGraphs(): Project {
-    this.files = this.paths.map((p) => new SourceFile(p, true))
-    return this
-  }
-
-  public linkGraphs(): Project {
+    // Linking modules
     const allImports: Import[] = []
     const allExports: { [key: string]: Export } = {}
 
-    for (const file of this.files) {
+    for (const file of Object.values(this.files)) {
       allImports.push(...file.getImports())
       for (const exp of file.getExports()) {
         allExports[exp.absolutePath] = exp
@@ -74,24 +61,24 @@ export default class Project {
 
     const exportPaths = Object.keys(allExports)
     for (const imp of allImports) {
-      if (imp.type === 'path' && exportPaths.includes(imp.absolutePath)) {
-        this.edges.push({
+      if (imp.type === 'path' && exportPaths.includes(imp.path.absolutePath)) {
+        this.importEdges.push({
           src: imp.vertex,
-          dst: allExports[imp.absolutePath].vertex,
+          dst: allExports[imp.path.absolutePath].vertex,
           rel: Relationship.IMPORT,
-          var: isString(imp.imported)
-            ? imp.imported
-            : (imp.imported as Symbol).toString(),
+          var: isString(imp.imported) ? imp.imported : imp.imported.toString(),
         })
-        this.edges.push({
-          src: allExports[imp.absolutePath].vertex,
+        this.importEdges.push({
+          src: allExports[imp.path.absolutePath].vertex,
           dst: imp.vertex,
           rel: Relationship.EXPORT,
         })
       }
     }
+  }
 
-    return this
+  public toString(): string {
+    return this.toDot(true)
   }
 
   public toDot(withPaths: boolean = false): string {
@@ -119,9 +106,9 @@ export default class Project {
         .join(';')
 
     let nodes = ''
-    let edges = edgesToString(this.edges)
-    for (const file of this.files) {
-      const graph = file.getGraph()
+    let edges = edgesToString(this.importEdges)
+    for (const file of Object.keys(this.files)) {
+      const graph = this.files[file].getGraph()
       nodes += graphVerticesToString(graph)
       edges += edgesToString(graph.getAllEdges())
     }
@@ -137,11 +124,11 @@ export default class Project {
 // join(process.cwd(), './test/validation/06-exports-invalid.js')
 // join(process.cwd(), './test/validation/07-commonjs-valid.js')
 // )
-const p = resolve(
-  join(process.cwd(), '../prune.js-samples/node-express-realworld-example-app')
-)
+// const p = resolve(
+//   join(process.cwd(), '../prune.js-samples/node-express-realworld-example-app')
+// )
 
-const proj = new Project(
-  '../prune.js-samples/node-express-realworld-example-app'
-)
-console.log(proj.generateGraphs().linkGraphs().toDot(true))
+// const proj = new Project(
+//   '../prune.js-samples/node-express-realworld-example-app'
+// )
+// console.log(proj.generateGraphs().linkGraphs().toDot(true))

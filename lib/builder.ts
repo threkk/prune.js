@@ -18,7 +18,7 @@ enum VariableTypes {
 // const FUNC_SCOPE = /Function|Catch|With|Module|Class|Switch|For|Block/
 const FUNC_SCOPE = /Function|With|Module|Class/
 
-export class GraphBuilder {
+class GraphBuilder {
   #graph: Graph
   #sm: ScopeManager
   #ast: estree.Node
@@ -27,9 +27,13 @@ export class GraphBuilder {
     this.#graph = new Graph(path)
     this.#sm = sm
     this.#ast = ast
+
+    this.generateVertices()
+    this.linkReadWrite()
+    this.linkCallParameters()
   }
 
-  generateVertices(): GraphBuilder {
+  private generateVertices(): void {
     let currentScope = this.#sm.acquire(this.#ast)
     estraverse.traverse(this.#ast, {
       enter: (node: estree.Node) => {
@@ -57,15 +61,13 @@ export class GraphBuilder {
         }
       },
     })
-
-    return this
   }
 
-  addReadWriteRelantionships(): GraphBuilder {
+  private linkReadWrite() {
     for (const scope of this.#sm.scopes) {
-      const lastW = new Map()
+      const lastWrite = new Map()
+
       for (const ref of scope.references) {
-        // const statement = this.#am.lookupStatement(ref.identifier as any)
         const statement = this.#graph.getVertex(ref.identifier)
         if (statement == null || !ref.resolved) {
           if (ref.identifier.name in JS_BUILTINS) {
@@ -76,14 +78,14 @@ export class GraphBuilder {
 
         const { name } = ref.identifier
 
-        if (!lastW.has(name)) {
+        if (!lastWrite.has(name)) {
           const defs = ref.resolved.defs
           const dcl = defs[defs.length - 1].parent ?? defs[defs.length - 1].node
           // const dcl = this.#am.lookupDeclarationStatament(ref.identifier)
-          if (dcl) lastW.set(name, dcl)
+          if (dcl) lastWrite.set(name, dcl)
         }
 
-        const dst = lastW.get(name)
+        const dst = lastWrite.get(name)
         if (!dst) continue
 
         if (ref.isRead() || ref.isReadWrite()) {
@@ -110,14 +112,13 @@ export class GraphBuilder {
             rel: Relationship.WRITE,
             var: name,
           })
-          lastW.set(name, statement.node)
+          lastWrite.set(name, statement.node)
         }
       }
     }
-    return this
   }
 
-  linkCallParameters(): GraphBuilder {
+  private linkCallParameters(): void {
     let currentScope = this.#sm.acquire(this.#ast)
 
     const checkParameter = (param: estree.Node, index: number) =>
@@ -126,14 +127,14 @@ export class GraphBuilder {
           // Recursion control
           if (/Block/.test(node.type)) estraverse.VisitorOption.Skip
 
-          if (/Identifier/.test(node.type)) {
+          if (isIdentifier(node)) {
             // 1. Search for its resolution.
             const variables = [...currentScope.variables]
             let recScope = currentScope
             while (variables.length > 0) {
               const v = variables.pop()
 
-              if (v.name === (node as estree.Identifier).name) {
+              if (v.name === node.name) {
                 const dst = v.defs[v.defs.length - 1].node
                 // 2. Link statement with the
                 const src = this.#graph.getVertex(node)
@@ -158,10 +159,10 @@ export class GraphBuilder {
     const checkArgument = (arg: estree.Node, index: number) => {
       estraverse.traverse(arg, {
         enter: (node) => {
-          if (/Identifier/.test(node.type)) {
+          if (isIdentifier(node)) {
             for (const v of currentScope.variables) {
               if (
-                v.name === (node as estree.Identifier).name &&
+                v.name === node.name &&
                 v.defs[0] != null &&
                 v.references[0] != null
               ) {
@@ -187,7 +188,7 @@ export class GraphBuilder {
       })
     }
 
-    estraverse.traverse(this.#ast as any, {
+    estraverse.traverse(this.#ast, {
       enter: (node) => {
         if (FUNC_SCOPE.test(node.type)) {
           const funcScope = this.#sm.acquire(node)
@@ -197,9 +198,9 @@ export class GraphBuilder {
             checkArgument((node as any).params[idx], idx)
           }
         }
-        if (/CallExpression|NewExpression/.test(node.type)) {
-          for (let idx = 0; idx < (node as any).arguments.length; idx++) {
-            checkParameter((node as any).arguments[idx], idx)
+        if (isLikeCallExpression(node)) {
+          for (let idx = 0; idx < node.arguments.length; idx++) {
+            checkParameter(node.arguments[idx], idx)
           }
         }
       },
@@ -209,10 +210,28 @@ export class GraphBuilder {
         }
       },
     })
-    return this
   }
 
   getGraph(): Graph {
     return this.#graph
   }
+}
+
+export function buildGraph(
+  path: string,
+  ast: estree.Node,
+  sm: ScopeManager
+): Graph {
+  const gb = new GraphBuilder(path, ast, sm)
+  return gb.getGraph()
+}
+
+function isIdentifier(node: estree.Node): node is estree.Identifier {
+  return /Identifier/.test(node.type)
+}
+
+function isLikeCallExpression(
+  node: estree.Node
+): node is estree.CallExpression {
+  return /CallExpression|NewExpression/.test(node.type)
 }

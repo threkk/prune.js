@@ -177,18 +177,18 @@ export class Graph {
       .filter((n) => n.node.loc != null && n.node.type !== 'Program')
       .map(
         (n) =>
-          `${this.#path} ${n.toString()}` +
+          `"${this.#path}" ${n.toString()}` +
           (n.isTerminal ? '[shape=box]' : '[shape=oval]')
       )
       .join(';')
     const edges: string = this.getAllEdges()
       .map(
         (edge) =>
-          `${this.#path} ${edge.src} -> ${this.#path} ${edge.dst} [label="rel=${
-            edge.rel
-          }${edge.var != null ? ',var=' + edge.var : ''}${
-            edge.index != null ? ',idx=' + edge.index : ''
-          }"]`
+          `"${this.#path} ${edge.src} -> "${this.#path} ${
+            edge.dst
+          }" [label="rel=${edge.rel}${
+            edge.var != null ? ',var=' + edge.var : ''
+          }${edge.index != null ? ',idx=' + edge.index : ''}"]`
       )
       .join(';')
     return `digraph { ${nodes}; ${edges} }`

@@ -1,5 +1,6 @@
-import { PathLike, readFileSync, readdirSync, readSync } from 'fs'
-import { join, resolve, posix, isAbsolute, extname } from 'path'
+import { accessSync, readFileSync, readdirSync, statSync } from 'fs'
+import { join, resolve, isAbsolute, extname } from 'path'
+import { F_OK, R_OK } from 'constants'
 
 /**
  * Extracts all the file paths from the project. Valid files depend on the
@@ -7,43 +8,75 @@ import { join, resolve, posix, isAbsolute, extname } from 'path'
  */
 export function extractFiles(
   root: string,
-  ignored: string[],
-  extensions: string[]
-): PathLike[] {
-  const ignoredItems = ignored.map((el) => {
-    if (isAbsolute(el)) return el
-    return resolve(join(root, el))
-  })
+  {
+    ignored = ['.git', 'node_modules'],
+    extensions = ['js'],
+    followSymlinks = false,
+  }: {
+    ignored?: string[]
+    extensions?: string[]
+    followSymlinks?: boolean
+  }
+): string[] {
+  // If the path is a file, we are done.
+  if (statSync(root).isFile()) {
+    if (ignored.includes(root)) return []
+    return [root]
+  }
 
-  function extract(r: string): string[] {
+  // For every path we need to generated the ignored paths.
+  const ignoredItemsInFolder = (path) =>
+    ignored.map((el) => {
+      if (isAbsolute(el)) return el
+      return resolve(join(path, el))
+    })
+
+  function listDir(localRoot: string): string[] {
     const items = []
+    const dirs = readdirSync(localRoot, {
+      encoding: 'utf-8',
+      withFileTypes: true,
+    })
 
-    const dirs = readdirSync(r, { encoding: 'utf-8', withFileTypes: true })
+    const ignored = ignoredItemsInFolder(localRoot)
     while (dirs != null && dirs.length > 0) {
       const peek = dirs.pop()
-      const path = resolve(join(r, peek.name))
+      const path = resolve(join(localRoot, peek.name))
+
       // Skipping if ignored
       if (ignored.includes(path)) continue
 
+      try {
+        accessSync(path, F_OK | R_OK)
+      } catch {
+        continue
+      }
+
+      if (!followSymlinks && peek.isSymbolicLink()) continue
       if (peek.isDirectory()) {
-        items.push(...extract(path))
+        items.push(...listDir(path))
         // Extname includes a dot.
-      } else if (extensions.includes(extname(path).substring(1))) {
+      } else if (
+        extensions.length === 0 ||
+        extensions.includes(extname(path).substring(1))
+      ) {
         items.push(path)
       }
     }
-
     return items
   }
-  return extract(root)
+  return listDir(root)
 }
 
-export function getPackageJson(root: string): any | null {
+export function getDependenciesFromPackage(root: string): string[] {
   const pkg = resolve(join(root, 'package.json'))
   try {
     const file = readFileSync(pkg, { encoding: 'utf-8' })
-    return JSON.parse(file)
-  } catch (e) {
-    return null
-  }
+    const json = JSON.parse(file)
+
+    if (json && json.dependencies) {
+      return Object.keys(json.dependencies)
+    }
+  } catch {}
+  return []
 }
