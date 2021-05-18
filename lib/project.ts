@@ -7,7 +7,6 @@ import { isString } from 'util'
 const DEFAULT_IGNORED = ['.git', 'node_modules']
 
 export interface ProjectProps {
-  entryPoints: string[]
   ignore?: string[]
   root: string
 }
@@ -15,7 +14,6 @@ export interface ProjectProps {
 export default class Project {
   // Project configuration
   root: Readonly<string>
-  entryPoints: Readonly<string[]>
   ignore: Readonly<string[]>
   paths: Readonly<string[]>
 
@@ -26,7 +24,6 @@ export default class Project {
 
   constructor(props: ProjectProps) {
     this.root = props.root
-    this.entryPoints = props.entryPoints
     this.ignore = [...DEFAULT_IGNORED, ...props.ignore] ?? [...DEFAULT_IGNORED]
 
     const root = statSync(this.root)

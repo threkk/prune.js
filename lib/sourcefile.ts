@@ -9,6 +9,7 @@ import { Options, parse } from 'espree'
 
 import { Graph, Relationship, StatementVertex } from './graph'
 import { buildGraph } from './builder'
+import hash from './util/hash'
 
 const MODULE_DEFAULT = Symbol('__PRUNE_MODULE_DEFAULT')
 const MODULE_NAMESPACE = Symbol('__PRUNE_MODULE_NAMESPACE')
@@ -84,6 +85,10 @@ export class SourceFile {
 
     this.registerExports()
     this.registerImports()
+  }
+
+  getHash() {
+    return hash(this.#path)
   }
 
   private registerExports() {
@@ -421,3 +426,6 @@ function getPatternIds(
     return ids
   }
 }
+
+export const isPackageImport = (i: Import): i is PackageImport =>
+  i.type === 'package'

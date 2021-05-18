@@ -13,6 +13,7 @@ interface StatementVertexProps {
   isBuiltin: boolean
   isDeclaration: boolean
   scope: Scope
+  path: string
 }
 
 export class StatementVertex {
@@ -24,6 +25,7 @@ export class StatementVertex {
   isTerminal: boolean
   isDeclaration: boolean
   isBuiltin: boolean
+  path: string
 
   constructor(props: StatementVertexProps) {
     this.id = hash(props.node)
@@ -32,6 +34,7 @@ export class StatementVertex {
     this.isDeclaration = props.isDeclaration
     this.isBuiltin = props.isBuiltin
     this.scope = props.scope
+    this.path = props.path
     ;[this.start, this.end] = props.node.range!
   }
 
@@ -89,6 +92,7 @@ export class Graph {
       isDeclaration: /Declaration/.test(props.node.type),
       isTerminal: false,
       isBuiltin: false,
+      path: this.#path,
     }
 
     const vertex: StatementVertex = new StatementVertex({
