@@ -1,4 +1,4 @@
-import { resolve, join, parse as parsePath } from 'path'
+import { resolve, join, extname, parse as parsePath } from 'path'
 import { readFileSync, PathLike } from 'fs'
 import { ScopeManager, analyze } from 'eslint-scope'
 import { traverse } from 'estraverse'
@@ -61,6 +61,7 @@ export class SourceFile {
     this.#exports = []
 
     const content: string = readFileSync(this.#path, 'utf-8')
+    // TODO: Issues parsing the shebang (#!/...)
     const options: Options = {
       sourceType: 'module', // Enables the import/export statements.
       loc: true, // Enables locations.a
@@ -101,21 +102,35 @@ export class SourceFile {
           ) {
             // It is not terminal per se, it is just exported so far..
             // vertex.isTerminal = true
-            const edges = this.#graph.getEdgeByVertex(vertex)
-            for (const edge of edges) {
-              if (
-                edge.rel === Relationship.READ ||
-                edge.rel === Relationship.CALL
-              ) {
-                // We need to remove the extension to match the imports
-                // behaviour.
-                const pathObj = parsePath(this.getAbsFilePath().toString())
-                this.#exports.push({
-                  var: edge.var,
-                  vertex,
-                  absolutePath: join(pathObj.dir, pathObj.name),
-                })
+
+            const pathObj = parsePath(this.getAbsFilePath().toString())
+            const absolutePath = join(pathObj.dir, pathObj.name)
+            // module.export = something
+            if (node.type === 'AssignmentExpression') {
+              const edges = this.#graph.getEdgeByVertex(vertex)
+              for (const edge of edges) {
+                if (
+                  edge.rel === Relationship.READ ||
+                  edge.rel === Relationship.CALL
+                ) {
+                  // We need to remove the extension to match the imports
+                  // behaviour.
+                  this.#exports.push({
+                    var: edge.var,
+                    vertex,
+                    absolutePath,
+                  })
+                }
               }
+            } else {
+              // TODO: ExportNamedDeclaration
+              // TODO: ExportDefaultDeclaration
+              // TODO: ExportAllDeclaration
+              this.#exports.push({
+                var: null,
+                vertex,
+                absolutePath,
+              })
             }
           }
         },
@@ -124,11 +139,22 @@ export class SourceFile {
   }
 
   private registerImports() {
-    const getRelativePath = (str: string) => str.substring(1, str.length - 1)
-    const getAbsolutePath = (str: string) =>
-      isRequirePath(str)
-        ? resolve(join(this.getAbsFilePath(), str.substring(1, str.length - 1)))
-        : str.substring(1, str.length - 1)
+    const getRelativePath = (str: string) => str
+    const getAbsolutePath = (str: string) => {
+      const req = str //.substring(1, str.length - 1)
+      if (isRequirePath(str)) {
+        const parts = parsePath(this.getAbsFilePath())
+        const resolvedPath = resolve(join(parts.dir, req))
+
+        // TODO: Fix this issue
+        // If the resolved path does not have an extension, it means it is a
+        // directory and we need to add the /index.js
+        // if (extname(resolvedPath) == '') return join(resolvedPath, 'index.js')
+        // else resolvedPath
+        return resolvedPath
+      }
+      return req
+    }
 
     for (const vertex of this.#graph.getAllVertices()) {
       traverse(vertex.node, {
@@ -155,11 +181,13 @@ export class SourceFile {
                   },
                 }
               } else {
+                // It can be 'module' or 'module/submodule/'
+                const name = node.source.value.toString().split('/')[0]
                 return {
                   ...base,
                   imported: MODULE_DEFAULT,
                   type: 'package',
-                  name: node.source.value.toString(),
+                  name,
                 }
               }
             }
@@ -348,7 +376,7 @@ function isModuleExports(node?: estree.Node): boolean {
 }
 
 function isRequirePath(str: string): boolean {
-  const cleanStr = str.substring(1, str.length - 1)
+  const cleanStr = str // .substring(1, str.length - 1)
   // https://nodejs.org/en/knowledge/getting-started/what-is-require/
   return (
     cleanStr.startsWith('./') ||
@@ -359,6 +387,7 @@ function isRequirePath(str: string): boolean {
 
 function getRequireString(node: estree.Node): string | null {
   if (
+    node != null &&
     node.type === 'CallExpression' &&
     node.callee.type === 'Identifier' &&
     node.callee.name === 'require' &&
@@ -366,7 +395,7 @@ function getRequireString(node: estree.Node): string | null {
     node.arguments[0].type === 'Literal'
   ) {
     const arg: estree.Literal = node.arguments[0]
-    return arg.raw
+    return arg.value.toString()
   }
 
   return null

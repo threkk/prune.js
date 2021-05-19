@@ -1,32 +1,23 @@
-#!/usr/bin/env node --harmony
-import { Command } from 'commander'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
+#!/usr/bin/env node
+import Project from '../lib/project'
+import DeadCode from '../lib/dead-code'
 
-const pkg: any = JSON.parse(readFileSync('../../package.json', 'utf-8'))
+const [root, ...entryPoints] = process.argv.slice(2)
 
-// const Deps = require('../lib/dependencies/analyser')
-// TODO: Add support to the $NO_COLOR variable.
-const program = new Command()
-
-// Sets the CLI.
-program
-  .version(pkg.version)
-  .description(pkg.description)
-  .usage('[options]')
-  .option('-p, --path <root>', 'path to execute prunejs', process.cwd())
-  .option(
-    '-i, --ignore <paths>',
-    'excludes the following folders',
-    (val: string) => val.split(','),
-    ['node_modules', '.git']
-  )
-  .parse(process.argv)
-
-const { path, ignore } = program
-
-// Initialise the configuration.
-const config = {
-  root: path,
-  ignore: [...new Set([...ignore])].map(route => resolve(path, route))
+const project = new Project({ root })
+const deadCode = new DeadCode(project)
+for (const entryPoint of entryPoints) {
+  deadCode.createSubgraph(entryPoint)
 }
+console.log(
+  'dead code'
+    .toUpperCase()
+    .split('')
+    .map((c) => ` ${c}`)
+    .join('')
+)
+console.log('=> Dependencies', deadCode.getDeadDependencies())
+console.log(
+  '=> Modules',
+  deadCode.getDeadModules().map((s) => s.getAbsFilePath())
+)

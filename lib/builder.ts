@@ -80,9 +80,12 @@ class GraphBuilder {
 
         if (!lastWrite.has(name)) {
           const defs = ref.resolved.defs
-          const dcl = defs[defs.length - 1].parent ?? defs[defs.length - 1].node
-          // const dcl = this.#am.lookupDeclarationStatament(ref.identifier)
-          if (dcl) lastWrite.set(name, dcl)
+          if (defs.length > 0) {
+            const dcl =
+              defs[defs.length - 1].parent ?? defs[defs.length - 1].node
+            // const dcl = this.#am.lookupDeclarationStatament(ref.identifier)
+            if (dcl) lastWrite.set(name, dcl)
+          }
         }
 
         const dst = lastWrite.get(name)
@@ -134,7 +137,7 @@ class GraphBuilder {
             while (variables.length > 0) {
               const v = variables.pop()
 
-              if (v.name === node.name) {
+              if (v.name === node.name && v.defs.length > 0) {
                 const dst = v.defs[v.defs.length - 1].node
                 // 2. Link statement with the
                 const src = this.#graph.getVertex(node)
@@ -190,11 +193,11 @@ class GraphBuilder {
 
     estraverse.traverse(this.#ast, {
       enter: (node) => {
-        if (FUNC_SCOPE.test(node.type)) {
+        if (isLikeFunctionDeclataion(node)) {
           const funcScope = this.#sm.acquire(node)
           if (funcScope) currentScope = funcScope
 
-          for (let idx = 0; idx < (node as any).params.length; idx++) {
+          for (let idx = 0; idx < node.params.length; idx++) {
             checkArgument((node as any).params[idx], idx)
           }
         }
@@ -234,4 +237,8 @@ function isLikeCallExpression(
   node: estree.Node
 ): node is estree.CallExpression {
   return /CallExpression|NewExpression/.test(node.type)
+}
+
+function isLikeFunctionDeclataion(node: estree.Node): node is estree.Function {
+  return /Function/.test(node.type)
 }

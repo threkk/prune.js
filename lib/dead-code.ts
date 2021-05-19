@@ -1,6 +1,7 @@
 import Project from './project'
 import { SourceFile, isPackageImport } from './sourcefile'
 import { Graph, Relation } from './graph'
+import { resolve, isAbsolute } from 'path'
 
 class SubGraph {
   constructor(
@@ -20,10 +21,11 @@ export default class DeadCode {
   }
 
   createSubgraph(entryPoint: string) {
-    if (Object.keys(this.#project.files).includes(entryPoint)) {
+    const entry = isAbsolute(entryPoint) ? entryPoint : resolve(entryPoint)
+    if (Object.keys(this.#project.files).includes(entry)) {
       const sg = new SubGraph()
 
-      const stack = [this.#project.files[entryPoint]]
+      const stack = [this.#project.files[entry]]
       while (stack.length > 0) {
         const file = stack.pop()
 
@@ -40,10 +42,17 @@ export default class DeadCode {
           .forEach((p) => sg.dependencies.add(p.name))
 
         const belongsToFile = belongsTo(file.getGraph())
+        // TODO: THIS FAILS A LOT.
+        // There is a problem with the paths.
+        // Projects to test:
+        // - node-realworld-example-app
+        // - dead-code
+        // - babylon-sample
         const connectedFiles = this.#project.importEdges
           .filter(belongsToFile)
           .map((e) => this.#project.files[e.dst.path])
-
+        console.log(connectedFiles)
+        break
         stack.push(...connectedFiles)
       }
 

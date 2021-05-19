@@ -24,7 +24,9 @@ export default class Project {
 
   constructor(props: ProjectProps) {
     this.root = props.root
-    this.ignore = [...DEFAULT_IGNORED, ...props.ignore] ?? [...DEFAULT_IGNORED]
+    this.ignore = [...DEFAULT_IGNORED, ...(props.ignore ?? [])] ?? [
+      ...DEFAULT_IGNORED,
+    ]
 
     const root = statSync(this.root)
 
@@ -113,19 +115,3 @@ export default class Project {
     return `digraph { ${nodes}; ${edges} }`
   }
 }
-
-// const file = resolve(
-// join(process.cwd(), './test/validation/03-nested-scopes-invalid.js')
-// join(process.cwd(), './test/validation/04-function-call-valid.js')
-// join(process.cwd(), './test/validation/05-control-flow-valid.js')
-// join(process.cwd(), './test/validation/06-exports-invalid.js')
-// join(process.cwd(), './test/validation/07-commonjs-valid.js')
-// )
-// const p = resolve(
-//   join(process.cwd(), '../prune.js-samples/node-express-realworld-example-app')
-// )
-
-// const proj = new Project(
-//   '../prune.js-samples/node-express-realworld-example-app'
-// )
-// console.log(proj.generateGraphs().linkGraphs().toDot(true))
