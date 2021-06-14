@@ -362,6 +362,10 @@ export class SourceFile {
   getGraph(): Graph {
     return this.#graph
   }
+
+  getDeadStatements(): StatementVertex[] {
+    return []
+  }
 }
 
 function isModuleExports(node?: estree.Node): boolean {

@@ -11,6 +11,13 @@ class SubGraph {
   ) {}
 }
 
+// TODO: Subgraph algorithm.
+// Get all the vertices of a file.
+// Get the first vertex, and add it to the subgraph. Add every other vertex that
+// is linked. If it is in a different file, add remaning vertices to the list of
+// vertices.
+// If there are no more linkable vertices to add to the subgraph, create a new
+// subgraph with the first vertex of the list. 
 export default class DeadCode {
   #project: Project
   #subgraphs: SubGraph[]
