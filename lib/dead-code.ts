@@ -1,13 +1,15 @@
 import Project from './project'
 import { SourceFile, isPackageImport } from './sourcefile'
-import { Graph, Relation } from './graph'
+import { Graph, Relation, StatementVertex } from './graph'
 import { resolve, isAbsolute } from 'path'
 
 class SubGraph {
   constructor(
     public files: { [key: string]: SourceFile } = {},
-    public importEdges: Relation[] = [],
-    public dependencies: Set<string> = new Set()
+    public nodes: { [key: string]: StatementVertex } = {},
+    public edges: Relation[] = [],
+    public dependencies: string[] = [],
+    public containsTerminal: boolean = false
   ) {}
 }
 
@@ -17,7 +19,7 @@ class SubGraph {
 // is linked. If it is in a different file, add remaning vertices to the list of
 // vertices.
 // If there are no more linkable vertices to add to the subgraph, create a new
-// subgraph with the first vertex of the list. 
+// subgraph with the first vertex of the list.
 export default class DeadCode {
   #project: Project
   #subgraphs: SubGraph[]
@@ -46,7 +48,11 @@ export default class DeadCode {
         file
           .getImports()
           .filter(isPackageImport)
-          .forEach((p) => sg.dependencies.add(p.name))
+          .forEach((p) => {
+            if (!sg.dependencies.includes(p.name)) {
+              sg.dependencies.push(p.name)
+            }
+          })
 
         const belongsToFile = belongsTo(file.getGraph())
         // TODO: THIS FAILS A LOT.

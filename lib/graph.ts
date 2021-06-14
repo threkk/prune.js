@@ -152,12 +152,14 @@ export class Graph {
     return [...this.#nodes.values()]
   }
 
-  getEdgeByVertex(node: StatementVertex): Relation[] {
-    const { id } = node
-
+  getEdgesByVertex(node: StatementVertex): Relation[] {
     return this.#edges.filter(
-      (edge) => edge.src.id === id || edge.dst.id === id
+      (edge) => edge.src.id === node.id || edge.dst.id === node.id
     )
+  }
+
+  getSourceEdgesByVertex(node: StatementVertex): Relation[] {
+    return this.#edges.filter((edge) => edge.src.id === node.id)
   }
 
   getAllEdges(): Relation[] {

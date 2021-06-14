@@ -107,7 +107,7 @@ export class SourceFile {
             const absolutePath = join(pathObj.dir, pathObj.name)
             // module.export = something
             if (node.type === 'AssignmentExpression') {
-              const edges = this.#graph.getEdgeByVertex(vertex)
+              const edges = this.#graph.getEdgesByVertex(vertex)
               for (const edge of edges) {
                 if (
                   edge.rel === Relationship.READ ||
