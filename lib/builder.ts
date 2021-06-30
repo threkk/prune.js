@@ -1,7 +1,13 @@
 import { Graph, Relationship, isStatementType } from './graph'
 import { JS_BUILTINS } from './builtin'
 import * as estraverse from 'estraverse'
-import * as estree from 'estree'
+import {
+  Node,
+  Identifier,
+  Function,
+  CallExpression,
+  ReturnStatement,
+} from 'estree'
 import { ScopeManager } from 'eslint-scope'
 
 enum VariableTypes {
@@ -21,9 +27,9 @@ const FUNC_SCOPE = /Function|With|Module|Class/
 class GraphBuilder {
   #graph: Graph
   #sm: ScopeManager
-  #ast: estree.Node
+  #ast: Node
 
-  constructor(path: string, ast: estree.Node, sm: ScopeManager) {
+  constructor(path: string, ast: Node, sm: ScopeManager) {
     this.#graph = new Graph(path)
     this.#sm = sm
     this.#ast = ast
@@ -35,8 +41,9 @@ class GraphBuilder {
 
   private generateVertices(): void {
     let currentScope = this.#sm.acquire(this.#ast)
+    let currentParent = null
     estraverse.traverse(this.#ast, {
-      enter: (node: estree.Node) => {
+      enter: (node: Node) => {
         //
         // 3. Get the current context.
         // /Function|Catch|With|Module|Class|Switch|For|Block/.test(node.type)
@@ -47,15 +54,22 @@ class GraphBuilder {
 
         // 2. Get the last statement the identifier found.
         if (isStatementType(node) && node.type !== 'BlockStatement') {
-          const vertex = { node, scope: currentScope }
-          this.#graph.addVertex(vertex)
+          const vertex = this.#graph.addVertex({
+            node,
+            parent: currentParent,
+            scope: currentScope,
+          })
+          if (currentParent) currentParent.block.push(vertex)
+          if (FUNC_SCOPE.test(node.type)) currentParent = vertex
         }
-
         // We need to accomplish 3 things:
       },
-      leave: (node: estree.Node) => {
+      leave: (node: Node) => {
         if (FUNC_SCOPE.test(node.type)) {
           currentScope = currentScope.upper
+
+          if (currentParent) currentParent = currentParent.parent?.node ?? null
+
           // TODO: Make sure that if the scope is not acquired, it doesn't go
           // up.
         }
@@ -68,7 +82,7 @@ class GraphBuilder {
       const lastWrite = new Map()
 
       for (const ref of scope.references) {
-        const statement = this.#graph.getVertex(ref.identifier)
+        const statement = this.#graph.getVertexByNode(ref.identifier)
         if (statement == null || !ref.resolved) {
           if (ref.identifier.name in JS_BUILTINS) {
             statement.isTerminal = JS_BUILTINS[ref.identifier.name]
@@ -124,9 +138,9 @@ class GraphBuilder {
   private linkCallParameters(): void {
     let currentScope = this.#sm.acquire(this.#ast)
 
-    const checkParameter = (param: estree.Node, index: number) =>
+    const checkParameter = (param: Node, index: number) =>
       estraverse.traverse(param, {
-        enter: (node: estree.Node) => {
+        enter: (node: Node) => {
           // Recursion control
           if (/Block/.test(node.type)) estraverse.VisitorOption.Skip
 
@@ -140,7 +154,7 @@ class GraphBuilder {
               if (v.name === node.name && v.defs.length > 0) {
                 const dst = v.defs[v.defs.length - 1].node
                 // 2. Link statement with the
-                const src = this.#graph.getVertex(node)
+                const src = this.#graph.getVertexByNode(node)
                 this.#graph.addEdge({
                   dst,
                   src: src.node,
@@ -159,7 +173,7 @@ class GraphBuilder {
         },
       })
 
-    const checkArgument = (arg: estree.Node, index: number) => {
+    const checkArgument = (arg: Node, index: number) => {
       estraverse.traverse(arg, {
         enter: (node) => {
           if (isIdentifier(node)) {
@@ -171,9 +185,11 @@ class GraphBuilder {
               ) {
                 // We get the vertex of the first declaration, which will be in
                 // the function.
-                const src = this.#graph.getVertex(v.defs[0].node)
+                const src = this.#graph.getVertexByNode(v.defs[0].node)
                 // and link it to the first appearece of the variable.
-                const dst = this.#graph.getVertex(v.references[0].identifier)
+                const dst = this.#graph.getVertexByNode(
+                  v.references[0].identifier
+                )
 
                 if (src != null && dst != null) {
                   this.#graph.addEdge({
@@ -193,7 +209,7 @@ class GraphBuilder {
 
     estraverse.traverse(this.#ast, {
       enter: (node) => {
-        if (isLikeFunctionDeclataion(node)) {
+        if (isLikeFunctionDeclaration(node)) {
           const funcScope = this.#sm.acquire(node)
           if (funcScope) currentScope = funcScope
 
@@ -206,6 +222,19 @@ class GraphBuilder {
             checkParameter(node.arguments[idx], idx)
           }
         }
+        if (isLikeReturnStatement(node)) {
+          const vertex = this.#graph.getVertexByNode(node)
+
+          if (vertex.parent) {
+            // TODO: This could be better if we accept also vertex instead of
+            // node as input paramter.
+            vertex.graph.addEdge({
+              src: vertex.node,
+              dst: vertex.parent.node,
+              rel: Relationship.RETURN,
+            })
+          }
+        }
       },
       leave: (node) => {
         if (FUNC_SCOPE.test(node.type)) {
@@ -213,8 +242,6 @@ class GraphBuilder {
         }
       },
     })
-
-    // TODO: Add return statements.
   }
 
   getGraph(): Graph {
@@ -222,25 +249,23 @@ class GraphBuilder {
   }
 }
 
-export function buildGraph(
-  path: string,
-  ast: estree.Node,
-  sm: ScopeManager
-): Graph {
+export function buildGraph(path: string, ast: Node, sm: ScopeManager): Graph {
   const gb = new GraphBuilder(path, ast, sm)
   return gb.getGraph()
 }
 
-function isIdentifier(node: estree.Node): node is estree.Identifier {
+function isIdentifier(node: Node): node is Identifier {
   return /Identifier/.test(node.type)
 }
 
-function isLikeCallExpression(
-  node: estree.Node
-): node is estree.CallExpression {
+function isLikeCallExpression(node: Node): node is CallExpression {
   return /CallExpression|NewExpression/.test(node.type)
 }
 
-function isLikeFunctionDeclataion(node: estree.Node): node is estree.Function {
+function isLikeFunctionDeclaration(node: Node): node is Function {
   return /Function/.test(node.type)
+}
+
+function isLikeReturnStatement(node: Node): node is ReturnStatement {
+  return node.type === 'ReturnStatement'
 }

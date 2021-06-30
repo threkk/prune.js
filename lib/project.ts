@@ -52,8 +52,17 @@ export default class Project {
     const allExports: { [key: string]: Export } = {}
 
     for (const file of Object.values(this.files)) {
-      allImports.push(...file.getImports())
-      for (const exp of file.getExports()) {
+      const imports = Object.values(file.getImports()).reduce(
+        (prev, curr) => [...prev, ...curr],
+        []
+      )
+      allImports.push(...imports)
+
+      const exports = Object.values(file.getExports()).reduce(
+        (prev, curr) => [...prev, ...curr],
+        []
+      )
+      for (const exp of exports) {
         allExports[exp.absolutePath] = exp
       }
     }
@@ -67,11 +76,6 @@ export default class Project {
           rel: Relationship.IMPORT,
           var: isString(imp.imported) ? imp.imported : imp.imported.toString(),
         })
-        this.importEdges.push({
-          src: allExports[imp.path.absolutePath].vertex,
-          dst: imp.vertex,
-          rel: Relationship.EXPORT,
-        })
       }
     }
   }
@@ -81,13 +85,13 @@ export default class Project {
   }
 
   public toDot(withPaths: boolean = false): string {
-    const graphVerticesToString = (graph: Graph) =>
+    const graphVerticesToString = (graph: Readonly<Graph>) =>
       graph
         .getAllVertices()
         .filter((n) => n.node.loc != null && n.node.type !== 'Program')
         .map(
           (n) =>
-            `"${withPaths ? graph.getPath() : ''} ${n
+            `"${withPaths ? graph.path : ''} ${n
               .toString()
               .substring(1, n.toString().length - 1)}"` +
             (n.isTerminal ? '[shape=box]' : '[shape=oval]')
@@ -107,7 +111,7 @@ export default class Project {
     let nodes = ''
     let edges = edgesToString(this.importEdges)
     for (const file of Object.keys(this.files)) {
-      const graph = this.files[file].getGraph()
+      const graph = this.files[file].graph
       nodes += graphVerticesToString(graph)
       edges += edgesToString(graph.getAllEdges())
     }

@@ -13,6 +13,8 @@ interface StatementVertexProps {
   isBuiltin: boolean
   isDeclaration: boolean
   scope: Scope
+  graph: Graph
+  parent?: StatementVertex
   path: string
 }
 
@@ -26,6 +28,9 @@ export class StatementVertex {
   isDeclaration: boolean
   isBuiltin: boolean
   path: string
+  block: StatementVertex[]
+  parent: StatementVertex
+  graph: Graph
 
   constructor(props: StatementVertexProps) {
     this.id = hash(props.node)
@@ -35,11 +40,14 @@ export class StatementVertex {
     this.isBuiltin = props.isBuiltin
     this.scope = props.scope
     this.path = props.path
+    this.graph = props.graph
+    this.block = []
+    this.parent = props.parent
     ;[this.start, this.end] = props.node.range!
   }
 
   toString(): string {
-    return `"${this.node.loc.start.line}:${this.node.loc.start.column},${this.node.loc.end.line}:${this.node.loc.end.column}_${this.node.type}"`
+    return `"${this.path}_${this.node.loc.start.line}:${this.node.loc.start.column},${this.node.loc.end.line}:${this.node.loc.end.column}_${this.node.type}"`
   }
 }
 
@@ -77,22 +85,23 @@ export interface RelationProps {
 export class Graph {
   #nodes: Map<string, StatementVertex>
   #edges: Relation[]
-  #path: string
+  path: Readonly<string>
 
   constructor(path: string) {
     this.#nodes = new Map()
     this.#edges = []
-    this.#path = path
+    this.path = path
   }
 
   addVertex(
     props: Partial<StatementVertexProps> & { node: StatementType; scope: Scope }
-  ): void {
+  ): StatementVertex {
     const defaultProps = {
       isDeclaration: /Declaration/.test(props.node.type),
       isTerminal: false,
       isBuiltin: false,
-      path: this.#path,
+      path: this.path,
+      graph: this,
     }
 
     const vertex: StatementVertex = new StatementVertex({
@@ -103,11 +112,13 @@ export class Graph {
     if (!this.#nodes.has(vertex.id)) {
       this.#nodes.set(vertex.id, vertex)
     }
+
+    return vertex
   }
 
   addEdge(edge: RelationProps): void {
-    const src = this.getVertex(edge.src)
-    const dst = this.getVertex(edge.dst)
+    const src = this.getVertexByNode(edge.src)
+    const dst = this.getVertexByNode(edge.dst)
 
     if (!src || !this.#nodes.has(src.id)) {
       throw new Error(`Missing source node: ${src.id}`)
@@ -126,7 +137,11 @@ export class Graph {
     })
   }
 
-  getVertex(node: Node): StatementVertex {
+  getVertexById(id: string): StatementVertex {
+    return this.#nodes.get(id) ?? null
+  }
+
+  getVertexByNode(node: Node): StatementVertex {
     const [start, end] = node.range!
     let currVertex: StatementVertex = null
     let currDist: number = 0
@@ -166,33 +181,15 @@ export class Graph {
     return this.#edges
   }
 
-  getEdgesLength(): number {
-    return this.#edges.length
-  }
-
-  getVerticesSize(): number {
-    return this.#nodes.size
-  }
-
-  getPath(): string {
-    return this.#path
-  }
-
   toString(): string {
     const nodes: string = this.getAllVertices()
       .filter((n) => n.node.loc != null && n.node.type !== 'Program')
-      .map(
-        (n) =>
-          `"${this.#path}" ${n.toString()}` +
-          (n.isTerminal ? '[shape=box]' : '[shape=oval]')
-      )
+      .map((n) => `${n}` + (n.isTerminal ? '[shape=box]' : '[shape=oval]'))
       .join(';')
     const edges: string = this.getAllEdges()
       .map(
         (edge) =>
-          `"${this.#path} ${edge.src} -> "${this.#path} ${
-            edge.dst
-          }" [label="rel=${edge.rel}${
+          `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
             edge.var != null ? ',var=' + edge.var : ''
           }${edge.index != null ? ',idx=' + edge.index : ''}"]`
       )

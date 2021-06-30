@@ -1,12 +1,12 @@
 import Project from './project'
 import { SourceFile, isPackageImport } from './sourcefile'
-import { Graph, Relation, StatementVertex } from './graph'
+import { Graph, Relation, Relationship, StatementVertex } from './graph'
 import { resolve, isAbsolute } from 'path'
 
 class SubGraph {
   constructor(
     public files: { [key: string]: SourceFile } = {},
-    public nodes: { [key: string]: StatementVertex } = {},
+    public vertices: { [key: string]: StatementVertex } = {},
     public edges: Relation[] = [],
     public dependencies: string[] = [],
     public containsTerminal: boolean = false
@@ -31,78 +31,167 @@ export default class DeadCode {
 
   createSubgraph(entryPoint: string) {
     const entry = isAbsolute(entryPoint) ? entryPoint : resolve(entryPoint)
-    if (Object.keys(this.#project.files).includes(entry)) {
-      const sg = new SubGraph()
 
-      const stack = [this.#project.files[entry]]
-      while (stack.length > 0) {
-        const file = stack.pop()
+    // If the entry point is actually not in the project, we are done.
+    if (!Object.keys(this.#project.files).includes(entry)) return
 
-        // Already processed.
-        if (sg.files.hasOwnProperty(file.getHash())) continue
+    // Creating a new subgraph
+    const sg = new SubGraph()
 
-        // Add the file to the subgraph
-        sg.files[file.getHash()] = file
+    // Getting all the vertices of the entry point.
+    const stack: StatementVertex[] = [
+      ...this.#project.files[entry].graph.getAllVertices(),
+    ]
 
-        // And its packages to the list of dependencies.
-        file
-          .getImports()
-          .filter(isPackageImport)
-          .forEach((p) => {
-            if (!sg.dependencies.includes(p.name)) {
-              sg.dependencies.push(p.name)
-            }
-          })
+    // We will keep adding vertices to the stack until we are done.
+    while (stack.length > 0) {
+      const vertex = stack.pop()
 
-        const belongsToFile = belongsTo(file.getGraph())
-        // TODO: THIS FAILS A LOT.
-        // There is a problem with the paths.
-        // Projects to test:
-        // - node-realworld-example-app
-        // - dead-code
-        // - babylon-sample
-        const connectedFiles = this.#project.importEdges
-          .filter(belongsToFile)
-          .map((e) => this.#project.files[e.dst.path])
-        console.log(connectedFiles)
-        break
-        stack.push(...connectedFiles)
+      // If it is already processed, we skip the vertex.
+      if (Object.keys(sg.vertices).includes(vertex.id)) continue
+      // if not, we add it to the subgraph.
+      else sg.vertices[vertex.id] = vertex
+
+      // TODO: Maybe, if it has a block, push the vertex to analyse too. That
+      // will solve the issue of parameter-less functions.
+      // stack.push(...vertex.block)
+
+      // If we have not tracked the file yet, we do
+      if (!Object.keys(sg.files).includes(vertex.graph.path)) {
+        const file = this.#project.files[vertex.graph.path]
+        sg.files[vertex.graph.path] = file
       }
 
-      this.#subgraphs.push(sg)
+      const file = sg.files[vertex.graph.path]
+
+      // If it is terminal, we flip the flag.
+      if (vertex.isTerminal) sg.containsTerminal = true
+
+      // Now that the vertex is processed, we start looking into the connecting
+      // edges to get more vertices. We have 3 types of edges: inter vertex
+      // edges, inter graph edges and import edges.
+      // Inter vertex
+      vertex.graph.getEdgesByVertex(vertex).forEach((e) => {
+        // Add the edge to the subgraph
+        sg.edges.push(e)
+        // Add the connected vertex to the stack.
+        stack.push(e.src.id === vertex.id ? e.dst : e.src)
+      })
+
+      // Inter module edges
+      for (const impEdge of this.#project.importEdges) {
+        if (
+          impEdge.rel === Relationship.IMPORT &&
+          impEdge.src.id === vertex.id
+        ) {
+          sg.edges.push(impEdge)
+          stack.push(impEdge.dst)
+        }
+      }
+
+      // Module import
+      const imports = file.getImports()[vertex.id] ?? []
+      for (const i of imports) {
+        if (i.type === 'package') {
+          sg.dependencies.push(i.name)
+        }
+      }
+
+      // And its packages to the list of dependencies.
+      // file
+      //   .getImports()
+      //   .filter(isPackageImport)
+      //   .forEach((p) => {
+      //     if (!sg.dependencies.includes(p.name)) {
+      //       sg.dependencies.push(p.name)
+      //     }
+      //   })
+
+      // const belongsToFile = belongsTo(file.getGraph())
+      // // TODO: THIS FAILS A LOT.
+      // // There is a problem with the paths.
+      // // Projects to test:
+      // // - node-realworld-example-app
+      // // - dead-code
+      // // - babylon-sample
+      // const connectedFiles = this.#project.importEdges
+      //   .filter(belongsToFile)
+      //   .map((e) => this.#project.files[e.dst.path])
+      // console.log(connectedFiles)
+      // break
+      // stack.push(...connectedFiles)
     }
+
+    this.#subgraphs.push(sg)
   }
 
   getDeadDependencies(): string[] {
     const allDeps = this.#project.dependencies
 
-    const usedDeps: string[] = this.#subgraphs.reduce(
-      (prev: string[], curr: SubGraph) => prev.concat([...curr.dependencies]),
-      []
-    )
+    const usedDeps = []
+    for (const sg of this.#subgraphs) {
+      if (sg.containsTerminal) usedDeps.push(...sg.dependencies)
+    }
 
     return allDeps.filter((dep) => !usedDeps.includes(dep))
   }
 
   getDeadModules(): SourceFile[] {
-    const allHashes = this.#subgraphs
-      .reduce(
-        (prev: SourceFile[], curr: SubGraph) =>
-          prev.concat(Object.values(curr.files)),
-        []
-      )
-      .map((sf) => sf.getHash())
-
-    const dead = []
-    for (const file of Object.values(this.#project.files)) {
-      if (!allHashes.includes(file.getHash())) {
-        dead.push(file)
-      }
+    const usedFiles = []
+    for (const sg of this.#subgraphs) {
+      if (sg.containsTerminal) usedFiles.push(...Object.keys(sg.files))
     }
+
+    const dead: SourceFile[] = []
+    for (const path of Object.keys(this.#project.files)) {
+      if (!usedFiles.includes(path)) dead.push(this.#project.files[path])
+    }
+
     return dead
+    // const allHashes = this.#subgraphs
+    //   .reduce(
+    //     (prev: SourceFile[], curr: SubGraph) =>
+    //       prev.concat(Object.values(curr.files)),
+    //     []
+    //   )
+    //   .map((sf) => sf.getHash())
+
+    // const dead = []
+    // for (const file of Object.values(this.#project.files)) {
+    //   if (!allHashes.includes(file.getHash())) {
+    //     dead.push(file)
+    //   }
+    // }
+    // return dead
   }
 
-  getDeadStatements() {}
+  getDeadStatements(): StatementVertex[] {
+    const usedFiles = []
+    for (const sg of this.#subgraphs) {
+      if (sg.containsTerminal) usedFiles.push(...Object.keys(sg.files))
+    }
+
+    const usedVertexIds: string[] = []
+    for (const sg of this.#subgraphs) {
+      if (sg.containsTerminal) usedVertexIds.push(...Object.keys(sg.vertices))
+    }
+
+    const dead: StatementVertex[] = []
+    for (const file of Object.values(this.#project.files)) {
+      if (usedFiles.includes(file.path)) {
+        for (const vertex of file.graph.getAllVertices()) {
+          if (
+            !usedVertexIds.includes(vertex.id) &&
+            vertex.node.type !== 'Program'
+          ) {
+            dead.push(vertex)
+          }
+        }
+      }
+    }
+
+    return dead
+  }
 }
 
-const belongsTo = (g: Graph) => (e: Relation) => e.src.path === g.getPath()
+// const belongsTo = (g: Graph) => (e: Relation) => e.src.path === g.path

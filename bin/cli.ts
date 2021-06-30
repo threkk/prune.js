@@ -19,5 +19,16 @@ console.log(
 console.log('=> Dependencies', deadCode.getDeadDependencies())
 console.log(
   '=> Modules',
-  deadCode.getDeadModules().map((s) => s.getAbsFilePath())
+  deadCode.getDeadModules().map((d) => d.path)
 )
+
+console.log(
+  '=> Vertices',
+  deadCode.getDeadStatements().map((d) => d.toString())
+)
+
+// for (const [path, file] of Object.entries(project.files)) {
+//   if (path.endsWith('diff.js')) {
+//     console.log(file.graph.toString())
+//   }
+// }
