@@ -1,8 +1,8 @@
 import { resolve, join, extname, parse as parsePath } from 'path'
-import { readFileSync, PathLike } from 'fs'
+import { readFileSync, PathLike, accessSync, constants } from 'fs'
 import { ScopeManager, analyze } from 'eslint-scope'
 import { traverse } from 'estraverse'
-import { Literal, Pattern, Node } from 'estree'
+import { Declaration, Literal, Pattern, Node } from 'estree'
 
 // @ts-ignore TS7016
 import { Options, parse } from 'espree'
@@ -88,8 +88,15 @@ export class SourceFile {
     this.registerImports()
   }
 
+  public getExports(): { [key: string]: Export[] } {
+    return this.#exports
+  }
+
+  public getImports(): { [key: string]: Import[] } {
+    return this.#imports
+  }
+
   private registerExports() {
-    const getAbsoluteImportPath = getAbsoluteImportPathBuilder(this.path)
     for (const vertex of this.graph.getAllVertices()) {
       traverse(vertex.node, {
         enter: (node: Node) => {
@@ -138,7 +145,7 @@ export class SourceFile {
                       local: null,
                       path: {
                         relativePath: source,
-                        absolutePath: getAbsoluteImportPath(source),
+                        absolutePath: this.getAbsoluteImportPath(source),
                       },
                     })
                   } else {
@@ -169,6 +176,17 @@ export class SourceFile {
                     var: declaration,
                     absolutePath: absolutePath,
                   })
+
+                  // We also need to link the export statement with the function
+                  // declared.
+                  if (/Declaration/.test(node.declaration.type)) {
+                    this.graph.addEdge({
+                      src: node as unknown as Declaration, // Type wizardry
+                      dst: node.declaration as Declaration,
+                      var: declaration ?? null,
+                      rel: Relationship.EXPORT,
+                    })
+                  }
 
                   break
                 case 'ExportNamedDeclaration':
@@ -214,7 +232,7 @@ export class SourceFile {
                             local: null,
                             path: {
                               relativePath: source,
-                              absolutePath: getAbsoluteImportPath(source),
+                              absolutePath: this.getAbsoluteImportPath(source),
                             },
                           })
                         } else {
@@ -243,7 +261,6 @@ export class SourceFile {
       if (vertex.node.type === 'Program') continue
       traverse(vertex.node, {
         enter: (node: Node) => {
-          const getAbsoluteImportPath = getAbsoluteImportPathBuilder(this.path)
           // import a from 'a'
           if (node.type === 'ImportDeclaration') {
             const makeImport = (
@@ -261,10 +278,10 @@ export class SourceFile {
                   type: 'path',
                   imported: MODULE_DEFAULT,
                   path: {
-                    relativePath: getRelativeImportPath(
+                    relativePath: this.getRelativeImportPath(
                       node.source.value.toString()
                     ),
-                    absolutePath: getAbsoluteImportPath(
+                    absolutePath: this.getAbsoluteImportPath(
                       node.source.value.toString()
                     ),
                   },
@@ -323,8 +340,8 @@ export class SourceFile {
                         ...base,
                         type: 'path',
                         path: {
-                          relativePath: getRelativeImportPath(reqImport),
-                          absolutePath: getAbsoluteImportPath(reqImport),
+                          relativePath: this.getRelativeImportPath(reqImport),
+                          absolutePath: this.getAbsoluteImportPath(reqImport),
                         },
                       })
                     } else {
@@ -348,8 +365,8 @@ export class SourceFile {
                           ...base,
                           type: 'path',
                           path: {
-                            relativePath: getRelativeImportPath(reqImport),
-                            absolutePath: getAbsoluteImportPath(reqImport),
+                            relativePath: this.getRelativeImportPath(reqImport),
+                            absolutePath: this.getAbsoluteImportPath(reqImport),
                           },
                         })
                       } else {
@@ -387,8 +404,8 @@ export class SourceFile {
                       ...base,
                       type: 'path',
                       path: {
-                        relativePath: getRelativeImportPath(requireImport),
-                        absolutePath: getAbsoluteImportPath(requireImport),
+                        relativePath: this.getRelativeImportPath(requireImport),
+                        absolutePath: this.getAbsoluteImportPath(requireImport),
                       },
                     })
                   } else {
@@ -419,8 +436,8 @@ export class SourceFile {
                     ...base,
                     type: 'path',
                     path: {
-                      relativePath: getRelativeImportPath(requireImport),
-                      absolutePath: getAbsoluteImportPath(requireImport),
+                      relativePath: this.getRelativeImportPath(requireImport),
+                      absolutePath: this.getAbsoluteImportPath(requireImport),
                     },
                   })
                 } else {
@@ -438,12 +455,40 @@ export class SourceFile {
     }
   }
 
-  getExports(): { [key: string]: Export[] } {
-    return this.#exports
+  private getRelativeImportPath(str: string): string {
+    return str
   }
 
-  getImports(): { [key: string]: Import[] } {
-    return this.#imports
+  private getAbsoluteImportPath(str: string): string {
+    const req = str //.substring(1, str.length - 1)
+    if (isRequirePath(str)) {
+      const parts = parsePath(this.path)
+      const resolvedPath = resolve(join(parts.dir, req))
+
+      // 1 - Base case.
+      if (extname(resolvedPath) === '.js') {
+        return resolvedPath
+      }
+
+      // 2 - It is missing .js
+      try {
+        const maybeExt = `${resolvedPath}.js`
+
+        accessSync(maybeExt, constants.F_OK)
+        return maybeExt
+      } catch {
+        // 3 - It is a directory
+        const maybeIndex = join(resolvedPath, './index.js')
+        try {
+          accessSync(maybeIndex, constants.F_OK)
+          return maybeIndex
+        } catch {
+          // Everything failed, we just return the base
+          return resolvedPath
+        }
+      }
+    }
+    return req
   }
 }
 
@@ -534,31 +579,6 @@ function getPatternIds(node: Pattern): { local: string; imported: string }[] {
     return ids
   }
 }
-
-const getRelativeImportPath = (str: string): string => str
-// TODO: This has to be a method. We also need the list of paths from the
-// project.
-const getAbsoluteImportPathBuilder =
-  (path: string) =>
-  (str: string): string => {
-    const req = str //.substring(1, str.length - 1)
-    if (isRequirePath(str)) {
-      const parts = parsePath(path)
-      const resolvedPath = resolve(join(parts.dir, req))
-
-      // TODO: Fix this issue
-      // 1 - Try to hit the path.
-      // 2 - Path with .js if no extension
-      // 3 - Path with index.js
-      //
-      // If the resolved path does not have an extension, it means it is a
-      // directory and we need to add the /index.js
-      // if (extname(resolvedPath) == '') return join(resolvedPath, 'index.js')
-      // else resolvedPath
-      return resolvedPath
-    }
-    return req
-  }
 
 export const isPackageImport = (i: Import): i is PackageImport =>
   i.type === 'package'
