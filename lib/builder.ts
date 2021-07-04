@@ -59,6 +59,7 @@ class GraphBuilder {
             parent: currentParent,
             scope: currentScope,
           })
+
           if (currentParent) currentParent.block.push(vertex)
           if (FUNC_SCOPE.test(node.type)) currentParent = vertex
         }
@@ -68,10 +69,8 @@ class GraphBuilder {
         if (FUNC_SCOPE.test(node.type)) {
           currentScope = currentScope.upper
 
-          if (currentParent) currentParent = currentParent.parent?.node ?? null
-
-          // TODO: Make sure that if the scope is not acquired, it doesn't go
-          // up.
+          // TODO: Make sure that if the scope is not acquired, it doesn't go up
+          if (currentParent) currentParent = currentParent.parent ?? null
         }
       },
     })
