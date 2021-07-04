@@ -85,37 +85,25 @@ export default class Project {
   }
 
   public toDot(withPaths: boolean = false): string {
-    const graphVerticesToString = (graph: Readonly<Graph>) =>
-      graph
-        .getAllVertices()
-        .filter((n) => n.node.loc != null && n.node.type !== 'Program')
-        .map(
-          (n) =>
-            `"${withPaths ? graph.path : ''} ${n
-              .toString()
-              .substring(1, n.toString().length - 1)}"` +
-            (n.isTerminal ? '[shape=box]' : '[shape=oval]')
-        )
-        .join(';')
-
-    const edgesToString = (edges: Relation[]) =>
-      edges
-        .map(
-          (edge) =>
-            `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
-              edge.var != null ? ',var=' + edge.var : ''
-            }${edge.index != null ? ',idx=' + edge.index : ''}"]`
-        )
-        .join(';')
-
-    let nodes = ''
-    let edges = edgesToString(this.importEdges)
-    for (const file of Object.keys(this.files)) {
-      const graph = this.files[file].graph
-      nodes += graphVerticesToString(graph)
-      edges += edgesToString(graph.getAllEdges())
+    const vertices = []
+    const links = [...this.importEdges]
+    for (const file of Object.values(this.files)) {
+      vertices.push(...file.graph.getAllVertices())
+      links.push(...file.graph.getAllEdges())
     }
 
+    const nodes: string = vertices
+      .filter((n) => n.node.loc != null && n.node.type !== 'Program')
+      .map((n) => `${n}` + (n.isTerminal ? '[shape=box]' : '[shape=oval]'))
+      .join(';')
+    const edges: string = links
+      .map(
+        (edge) =>
+          `${edge.src} -> ${edge.dst} [label="rel=${edge.rel}${
+            edge.var != null ? ',var=' + edge.var : ''
+          }${edge.index != null ? ',idx=' + edge.index : ''}"]`
+      )
+      .join(';')
     return `digraph { ${nodes}; ${edges} }`
   }
 }
