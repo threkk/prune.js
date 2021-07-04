@@ -141,5 +141,8 @@ export const JS_BUILTINS: Builtin = {
   Notification: true,
   SharedWorker: false,
   WebSocket: true,
-  MessageEvent: false
+  MessageEvent: false,
+
+  // Node
+  process: true,
 }

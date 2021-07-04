@@ -3,6 +3,9 @@ import hash from './util/hash'
 import { Scope } from 'eslint-scope'
 
 export type StatementType = Statement | Declaration | Program
+// | ExportDefaultDeclaration
+// | ExportAllDeclaration
+// | ExportNamedDeclaration
 export function isStatementType(node: Node): node is StatementType {
   return /Statement|Declaration/.test(node.type) || node.type === 'Program'
 }

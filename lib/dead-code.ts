@@ -182,7 +182,8 @@ export default class DeadCode {
         for (const vertex of file.graph.getAllVertices()) {
           if (
             !usedVertexIds.includes(vertex.id) &&
-            vertex.node.type !== 'Program'
+            vertex.node.type !== 'Program' &&
+            !vertex.isTerminal
           ) {
             dead.push(vertex)
           }
