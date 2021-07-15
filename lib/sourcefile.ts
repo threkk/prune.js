@@ -54,7 +54,7 @@ export class SourceFile {
   path: Readonly<string>
   graph: Readonly<Graph>
 
-  constructor(path: string, jsx: boolean = false) {
+  constructor(path: string, isLibrary: boolean = false, jsx: boolean = false) {
     this.path = path
     this.graph = null
     this.#imports = {}
@@ -84,7 +84,7 @@ export class SourceFile {
 
     this.graph = buildGraph(this.path, this.#ast, this.#sm)
 
-    this.registerExports()
+    this.registerExports(isLibrary)
     this.registerImports()
   }
 
@@ -96,7 +96,7 @@ export class SourceFile {
     return this.#imports
   }
 
-  private registerExports() {
+  private registerExports(isLibrary: boolean) {
     for (const vertex of this.graph.getAllVertices()) {
       traverse(vertex.node, {
         enter: (node: Node) => {
@@ -104,25 +104,41 @@ export class SourceFile {
             /Export/.test(node.type) ||
             (node.type === 'AssignmentExpression' && isModuleExports(node.left))
           ) {
-            const pathObj = parsePath(this.path)
-            const absolutePath = join(pathObj.dir, pathObj.name)
-            // module.export = something
+            const absolutePath = this.path
+
+            // module.exports = something
+            // exports.something = something
+            // exports = something
             if (node.type === 'AssignmentExpression') {
               const edges = this.graph.getEdgesByVertex(vertex)
-              for (const edge of edges) {
-                if (
-                  edge.rel === Relationship.READ ||
-                  edge.rel === Relationship.CALL
-                ) {
+              if (!this.#exports[vertex.id]) this.#exports[vertex.id] = []
+
+              if (edges.length > 0) {
+                for (const edge of edges) {
+                  let variable = null
+                  if (
+                    edge.rel === Relationship.READ ||
+                    edge.rel === Relationship.CALL
+                  ) {
+                    variable = edge.var
+                  }
                   // We need to remove the extension to match the imports
                   // behaviour.
-                  if (!this.#exports[vertex.id]) this.#exports[vertex.id] = []
+                  if (isLibrary)
+                    this.graph.vertices[vertex.id].isTerminal = true
                   this.#exports[vertex.id].push({
-                    var: edge.var,
+                    var: variable,
                     vertex,
                     absolutePath,
                   })
                 }
+              } else {
+                if (isLibrary) this.graph.vertices[vertex.id].isTerminal = true
+                this.#exports[vertex.id].push({
+                  var: null,
+                  vertex,
+                  absolutePath,
+                })
               }
             } else {
               if (!this.#exports[vertex.id]) this.#exports[vertex.id] = []
@@ -157,6 +173,9 @@ export class SourceFile {
                       name: source,
                     })
                   }
+
+                  if (isLibrary)
+                    this.graph.vertices[vertex.id].isTerminal = true
                   break
                 // export default functon() {}
                 case 'ExportDefaultDeclaration':
@@ -188,6 +207,8 @@ export class SourceFile {
                     })
                   }
 
+                  if (isLibrary)
+                    this.graph.vertices[vertex.id].isTerminal = true
                   break
                 case 'ExportNamedDeclaration':
                   // export var foo = 1
@@ -247,6 +268,8 @@ export class SourceFile {
                       }
                     }
                   }
+                  if (isLibrary)
+                    this.graph.vertices[vertex.id].isTerminal = true
                   break
               }
             }
@@ -493,14 +516,27 @@ export class SourceFile {
 }
 
 function isModuleExports(node?: Node): boolean {
-  return (
-    typeof node != null &&
+  // module.exports = ...
+  const isModuleExports =
+    node != null &&
     node.type === 'MemberExpression' &&
     node.object.type === 'Identifier' &&
     node.object.name === 'module' &&
     node.property.type === 'Identifier' &&
     node.property.name === 'exports'
-  )
+
+  // exports = ...
+  const isExports =
+    node != null && node.type === 'Identifier' && node.name === 'exports'
+
+  // exports.obj = ...
+  const isExportObj =
+    node != null &&
+    node.type === 'MemberExpression' &&
+    node.object.type === 'Identifier' &&
+    node.object.name === 'exports'
+
+  return isModuleExports || isExports || isExportObj
 }
 
 function isRequirePath(str: string): boolean {

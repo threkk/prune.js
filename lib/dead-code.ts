@@ -3,6 +3,8 @@ import { SourceFile, isPackageImport } from './sourcefile'
 import { Graph, Relation, Relationship, StatementVertex } from './graph'
 import { resolve, isAbsolute } from 'path'
 
+const FUNC_SCOPE = /Function|With|Module|Class/
+
 class SubGraph {
   constructor(
     public files: { [key: string]: SourceFile } = {},
@@ -33,7 +35,10 @@ export default class DeadCode {
     const entry = isAbsolute(entryPoint) ? entryPoint : resolve(entryPoint)
 
     // If the entry point is actually not in the project, we are done.
-    if (!Object.keys(this.#project.files).includes(entry)) return
+    if (!Object.keys(this.#project.files).includes(entry)) {
+      console.log(`Entry point not found: ${entry}`)
+      return
+    }
 
     // Creating a new subgraph
     const sg = new SubGraph()
@@ -60,6 +65,8 @@ export default class DeadCode {
       if (!Object.keys(sg.files).includes(vertex.graph.path)) {
         const file = this.#project.files[vertex.graph.path]
         sg.files[vertex.graph.path] = file
+        // No, this will not work.
+        // stack.push(...file.graph.getAllVertices())
       }
 
       const file = sg.files[vertex.graph.path]
@@ -69,7 +76,17 @@ export default class DeadCode {
 
       // Now that the vertex is processed, we start looking into the connecting
       // edges to get more vertices. We have 3 types of edges: inter vertex
-      // edges, inter graph edges and import edges.
+      // edges, inter graph edges and import edges. We also need to add the
+      // block items if the vertex has.
+      // Block
+      if (vertex.block.length > 0) {
+        for (const v of vertex.block) {
+          if (!FUNC_SCOPE.test(v.node.type)) {
+            stack.push(v)
+          }
+        }
+      }
+
       // Inter vertex
       vertex.graph.getEdgesByVertex(vertex).forEach((e) => {
         // Add the edge to the subgraph

@@ -26,24 +26,15 @@ switch (cmd) {
 function deadCode(
   root: string,
   entryPoints: string[],
-  ignore: string[] = []
+  ignore: string[] = [],
+  isLibrary: boolean = false
 ): void {
-  const project = new Project({ root, ignore })
+  const project = new Project({ root, ignore, isLibrary })
   const deadCode = new DeadCode(project)
   for (const entryPoint of entryPoints) {
     deadCode.createSubgraph(entryPoint)
   }
 
-  // for (const file of Object.values(project.files)) {
-  //   if (file.path.endsWith('app.js')) {
-  //     const { inspect } = require('util')
-  //     console.log(inspect(file.getImports(), { depth: 3 }))
-  //   }
-  //   if (file.path.endsWith('routes/index.js')) {
-  //     console.log(file.path)
-  //   }
-  // }
-  // return
   console.log(
     'dead code'
       .toUpperCase()
@@ -78,8 +69,9 @@ function graph(root: string, file: string): void {
 
 interface ConfigProps {
   root: string
-  ignore: string[]
   entryPoints: string[]
+  ignore?: string[]
+  isLibrary?: boolean
 }
 
 function loadConfig(path: string): void {
@@ -97,7 +89,8 @@ function loadConfig(path: string): void {
         isAbsolute(e) ? e : resolve(join(root, e))
       )
 
-      deadCode(root, entryPoints, ignore)
+      const isLibrary: boolean = config.isLibrary ?? false
+      deadCode(root, entryPoints, ignore, isLibrary)
     })
     .catch((e) => {
       console.error(`Configuration load failed: ${e.message}`)

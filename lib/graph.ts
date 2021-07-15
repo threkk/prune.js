@@ -36,7 +36,7 @@ export class StatementVertex {
   graph: Graph
 
   constructor(props: StatementVertexProps) {
-    this.id = hash(props.node)
+    this.id = hash(props.node, props.path)
     this.node = props.node
     this.isTerminal = props.isTerminal
     this.isDeclaration = props.isDeclaration
@@ -86,13 +86,13 @@ export interface RelationProps {
 }
 
 export class Graph {
-  #nodes: Map<string, StatementVertex>
-  #edges: Relation[]
+  vertices: { [key: string]: StatementVertex }
+  edges: Relation[]
   path: Readonly<string>
 
   constructor(path: string) {
-    this.#nodes = new Map()
-    this.#edges = []
+    this.vertices = {}
+    this.edges = []
     this.path = path
   }
 
@@ -112,8 +112,8 @@ export class Graph {
       ...props,
     })
 
-    if (!this.#nodes.has(vertex.id)) {
-      this.#nodes.set(vertex.id, vertex)
+    if (!this.vertices[vertex.id]) {
+      this.vertices[vertex.id] = vertex
     }
 
     return vertex
@@ -123,15 +123,15 @@ export class Graph {
     const src = this.getVertexByNode(edge.src)
     const dst = this.getVertexByNode(edge.dst)
 
-    if (!src || !this.#nodes.has(src.id)) {
+    if (!src || !this.vertices[src.id]) {
       throw new Error(`Missing source node: ${src.id}`)
     }
 
-    if (!dst || !this.#nodes.has(dst.id)) {
+    if (!dst || !this.vertices[dst.id]) {
       throw new Error(`Missing destination node: ${dst.id}`)
     }
 
-    this.#edges.push({
+    this.edges.push({
       src,
       dst,
       rel: edge.rel,
@@ -141,7 +141,7 @@ export class Graph {
   }
 
   getVertexById(id: string): StatementVertex {
-    return this.#nodes.get(id) ?? null
+    return this.vertices[id] ?? null
   }
 
   getVertexByNode(node: Node): StatementVertex {
@@ -150,7 +150,7 @@ export class Graph {
     let currDist: number = 0
     const pow2dist = (vs: number, ve: number): number =>
       Math.pow(Math.abs(vs - start), 2) + Math.pow(Math.abs(ve - end), 2)
-    for (const [, vertex] of this.#nodes) {
+    for (const vertex of Object.values(this.vertices)) {
       if (currVertex == null) {
         currVertex = vertex
         currDist = pow2dist(vertex.start, vertex.end)
@@ -167,21 +167,21 @@ export class Graph {
   }
 
   getAllVertices(): StatementVertex[] {
-    return [...this.#nodes.values()]
+    return [...Object.values(this.vertices)]
   }
 
   getEdgesByVertex(node: StatementVertex): Relation[] {
-    return this.#edges.filter(
+    return this.edges.filter(
       (edge) => edge.src.id === node.id || edge.dst.id === node.id
     )
   }
 
   getSourceEdgesByVertex(node: StatementVertex): Relation[] {
-    return this.#edges.filter((edge) => edge.src.id === node.id)
+    return this.edges.filter((edge) => edge.src.id === node.id)
   }
 
   getAllEdges(): Relation[] {
-    return this.#edges
+    return this.edges
   }
 
   toString(): string {

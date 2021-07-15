@@ -8,6 +8,7 @@ const DEFAULT_IGNORED = ['.git', 'node_modules']
 
 export interface ProjectProps {
   ignore?: string[]
+  isLibrary?: boolean
   root: string
 }
 
@@ -16,6 +17,7 @@ export default class Project {
   root: Readonly<string>
   ignore: Readonly<string[]>
   paths: Readonly<string[]>
+  isLibrary: Readonly<boolean>
 
   // Files, edges and dependencies.
   dependencies: Readonly<string[]>
@@ -24,6 +26,7 @@ export default class Project {
 
   constructor(props: ProjectProps) {
     this.root = props.root
+    this.isLibrary = props.isLibrary ?? false
     this.ignore = [...DEFAULT_IGNORED, ...(props.ignore ?? [])] ?? [
       ...DEFAULT_IGNORED,
     ]
@@ -44,7 +47,7 @@ export default class Project {
     this.importEdges = []
     this.files = {}
     for (const path of this.paths) {
-      this.files[path] = new SourceFile(path, false)
+      this.files[path] = new SourceFile(path, this.isLibrary, false)
     }
 
     // Linking modules

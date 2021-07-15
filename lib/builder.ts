@@ -7,6 +7,7 @@ import {
   Function,
   CallExpression,
   ReturnStatement,
+  MethodDefinition,
 } from 'estree'
 import { ScopeManager } from 'eslint-scope'
 
@@ -22,7 +23,9 @@ enum VariableTypes {
 }
 
 // const FUNC_SCOPE = /Function|Catch|With|Module|Class|Switch|For|Block/
-const FUNC_SCOPE = /Function|With|Module|Class/
+const FUNC_SCOPE = /Function|With|Module|Class|Method/
+// TODO: Throw, Try, Catch
+const SKIP_STATEMENT = /Block|Break|Continue/
 
 class GraphBuilder {
   #graph: Graph
@@ -53,11 +56,12 @@ class GraphBuilder {
         }
 
         // 2. Get the last statement the identifier found.
-        if (isStatementType(node) && node.type !== 'BlockStatement') {
+        if (isStatementType(node) && !SKIP_STATEMENT.test(node.type)) {
           const vertex = this.#graph.addVertex({
             node,
             parent: currentParent,
             scope: currentScope,
+            isTerminal: node.type === 'ThrowStatement',
           })
 
           if (currentParent) currentParent.block.push(vertex)
@@ -66,7 +70,7 @@ class GraphBuilder {
         // We need to accomplish 3 things:
       },
       leave: (node: Node) => {
-        if (FUNC_SCOPE.test(node.type)) {
+        if (FUNC_SCOPE.test(node.type) && currentScope.upper) {
           currentScope = currentScope.upper
 
           // TODO: Make sure that if the scope is not acquired, it doesn't go up
@@ -208,14 +212,21 @@ class GraphBuilder {
 
     estraverse.traverse(this.#ast, {
       enter: (node) => {
-        if (isLikeFunctionDeclaration(node)) {
+        if (FUNC_SCOPE.test(node.type)) {
           const funcScope = this.#sm.acquire(node)
           if (funcScope) currentScope = funcScope
+        }
 
+        if (isLikeFunctionDeclaration(node)) {
           for (let idx = 0; idx < node.params.length; idx++) {
             checkArgument((node as any).params[idx], idx)
           }
+        } else if (isLikeMethodDefinition(node)) {
+          for (let idx = 0; idx < node.value.params.length; idx++) {
+            checkArgument((node as any).value.params[idx], idx)
+          }
         }
+
         if (isLikeCallExpression(node)) {
           for (let idx = 0; idx < node.arguments.length; idx++) {
             checkParameter(node.arguments[idx], idx)
@@ -236,7 +247,7 @@ class GraphBuilder {
         }
       },
       leave: (node) => {
-        if (FUNC_SCOPE.test(node.type)) {
+        if (FUNC_SCOPE.test(node.type) && currentScope.upper) {
           currentScope = currentScope.upper
         }
       },
@@ -263,6 +274,10 @@ function isLikeCallExpression(node: Node): node is CallExpression {
 
 function isLikeFunctionDeclaration(node: Node): node is Function {
   return /Function/.test(node.type)
+}
+
+function isLikeMethodDefinition(node: Node): node is MethodDefinition {
+  return node.type === 'MethodDefinition'
 }
 
 function isLikeReturnStatement(node: Node): node is ReturnStatement {
