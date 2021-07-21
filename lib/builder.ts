@@ -1,4 +1,10 @@
-import { Graph, Relationship, isStatementType } from './graph'
+import {
+  Graph,
+  Relationship,
+  isStatementType,
+  StatementType,
+  StatementVertex,
+} from './graph'
 import { JS_BUILTINS } from './builtin'
 import * as estraverse from 'estraverse'
 import {
@@ -7,6 +13,7 @@ import {
   Function,
   CallExpression,
   ReturnStatement,
+  Statement,
   MethodDefinition,
 } from 'estree'
 import { ScopeManager } from 'eslint-scope'
@@ -23,9 +30,12 @@ enum VariableTypes {
 }
 
 // const FUNC_SCOPE = /Function|Catch|With|Module|Class|Switch|For|Block/
-const FUNC_SCOPE = /Function|With|Module|Class|Method/
+// TODO: Maybe method too?
+const FUNC_SCOPE = /Function|With|Class/
 // TODO: Throw, Try, Catch
 const SKIP_STATEMENT = /Block|Break|Continue/
+
+type ThisReferencer = { [key: string]: StatementType }
 
 class GraphBuilder {
   #graph: Graph
@@ -39,6 +49,7 @@ class GraphBuilder {
 
     this.generateVertices()
     this.linkReadWrite()
+    this.linkThisExpressions()
     this.linkCallParameters()
   }
 
@@ -136,6 +147,78 @@ class GraphBuilder {
         }
       }
     }
+  }
+
+  private linkThisExpressions(): void {
+    const treatBlock = (block: Statement[] | MethodDefinition[]) => {
+      const refs: ThisReferencer = {}
+
+      for (const element of block) {
+        estraverse.traverse(element, {
+          enter: (node: Node) => {
+            const vertex = this.#graph.getVertexByNode(node)
+            // Might be a write
+            if (node.type === 'AssignmentExpression') {
+              const property = thisPropertyName(node.left)
+              // If it is a this member expression and we can tell the
+              // property
+              if (property) {
+                // Previously written, it needs an edge
+                if (refs[property]) {
+                  const lastWrite: Node = refs[property]
+                  this.#graph.addEdge({
+                    src: vertex.node,
+                    dst: lastWrite,
+                    rel: Relationship.WRITE,
+                    var: property,
+                  })
+                }
+                // We need to look for the statement node.
+                // FIXME: Using an existing property name messes up everything.
+                if (property !== 'constructor') refs[property] = vertex.node
+              }
+              // Could be a read
+            } else {
+              const maybeThisProperty = thisPropertyName(node)
+              if (
+                maybeThisProperty &&
+                maybeThisProperty !== 'constructor' &&
+                refs[maybeThisProperty]
+              ) {
+                const lastWrite = refs[maybeThisProperty]
+
+                this.#graph.addEdge({
+                  src: vertex.node,
+                  dst: lastWrite,
+                  rel: Relationship.READ,
+                  var: maybeThisProperty,
+                })
+              }
+            }
+
+            // New block, we stop iterating.
+            if (node.type === 'BlockStatement' || node.type === 'ClassBody') {
+              estraverse.VisitorOption.Skip
+            }
+          },
+        })
+      }
+    }
+
+    estraverse.traverse(this.#ast, {
+      enter: (node: Node) => {
+        if (
+          node.type === 'FunctionDeclaration' ||
+          node.type === 'FunctionExpression'
+        ) {
+          treatBlock(node.body.body)
+        } else if (node.type === 'ClassBody') {
+          treatBlock(node.body)
+        } else if (node.type === 'WithStatement') {
+          treatBlock([node.body])
+        }
+      },
+    })
   }
 
   private linkCallParameters(): void {
@@ -282,4 +365,20 @@ function isLikeMethodDefinition(node: Node): node is MethodDefinition {
 
 function isLikeReturnStatement(node: Node): node is ReturnStatement {
   return node.type === 'ReturnStatement'
+}
+
+// Returns emtpy string if not a this assignemnt or unknown property
+function thisPropertyName(node: Node): string {
+  if (
+    node.type === 'MemberExpression' &&
+    node.object.type === 'ThisExpression'
+  ) {
+    switch (node.property.type) {
+      case 'Identifier':
+        return node.property.name
+      case 'Literal':
+        return node.property.value.toString()
+    }
+  }
+  return ''
 }

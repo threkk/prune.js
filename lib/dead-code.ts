@@ -3,7 +3,7 @@ import { SourceFile, isPackageImport } from './sourcefile'
 import { Graph, Relation, Relationship, StatementVertex } from './graph'
 import { resolve, isAbsolute } from 'path'
 
-const FUNC_SCOPE = /Function|With|Module|Class/
+const FUNC_SCOPE = /Function|With|Class/
 
 class SubGraph {
   constructor(
@@ -113,30 +113,6 @@ export default class DeadCode {
           sg.dependencies.push(i.name)
         }
       }
-
-      // And its packages to the list of dependencies.
-      // file
-      //   .getImports()
-      //   .filter(isPackageImport)
-      //   .forEach((p) => {
-      //     if (!sg.dependencies.includes(p.name)) {
-      //       sg.dependencies.push(p.name)
-      //     }
-      //   })
-
-      // const belongsToFile = belongsTo(file.getGraph())
-      // // TODO: THIS FAILS A LOT.
-      // // There is a problem with the paths.
-      // // Projects to test:
-      // // - node-realworld-example-app
-      // // - dead-code
-      // // - babylon-sample
-      // const connectedFiles = this.#project.importEdges
-      //   .filter(belongsToFile)
-      //   .map((e) => this.#project.files[e.dst.path])
-      // console.log(connectedFiles)
-      // break
-      // stack.push(...connectedFiles)
     }
 
     this.#subgraphs.push(sg)
@@ -165,21 +141,6 @@ export default class DeadCode {
     }
 
     return dead
-    // const allHashes = this.#subgraphs
-    //   .reduce(
-    //     (prev: SourceFile[], curr: SubGraph) =>
-    //       prev.concat(Object.values(curr.files)),
-    //     []
-    //   )
-    //   .map((sf) => sf.getHash())
-
-    // const dead = []
-    // for (const file of Object.values(this.#project.files)) {
-    //   if (!allHashes.includes(file.getHash())) {
-    //     dead.push(file)
-    //   }
-    // }
-    // return dead
   }
 
   getDeadStatements(): StatementVertex[] {
@@ -211,5 +172,3 @@ export default class DeadCode {
     return dead
   }
 }
-
-// const belongsTo = (g: Graph) => (e: Relation) => e.src.path === g.path

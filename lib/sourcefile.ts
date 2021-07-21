@@ -224,6 +224,16 @@ export class SourceFile {
                     }
 
                     for (const declaration of declarations) {
+                      // It looks like ExportNamedDeclaration, which is a
+                      // statement, contains Function declaration, which is also a
+                      // statement. We need to link them correctly or the
+                      // algorithm will fail. Also, exporting them.
+                      this.graph.addEdge({
+                        src: node as unknown as Declaration,
+                        dst: node.declaration as Declaration,
+                        var: declaration ?? null,
+                        rel: Relationship.EXPORT,
+                      })
                       this.#exports[vertex.id].push({
                         vertex,
                         var: declaration,

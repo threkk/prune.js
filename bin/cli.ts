@@ -42,20 +42,21 @@ function deadCode(
       .map((c) => ` ${c}`)
       .join('')
   )
-  console.log('=> Dependencies', deadCode.getDeadDependencies())
-  console.log(
-    '=> Modules',
-    deadCode.getDeadModules().map((d) => d.path)
-  )
+  const dependencies = deadCode.getDeadDependencies()
+  console.log('=> Dependencies', dependencies.length, dependencies)
 
-  console.log(
-    '=> Vertices',
-    deadCode.getDeadStatements().map((d) => d.toString())
-  )
+  const modules = deadCode.getDeadModules().map((d) => d.path)
+  console.log('=> Modules', modules.length, modules)
+
+  const statements = deadCode.getDeadStatements().map((d) => d.toString())
+  console.log('=> Vertices', statements.length, statements)
 }
 
 function project(root: string): void {
-  const project = new Project({ root, ignore: ['dist.js'] })
+  const project = new Project({
+    root,
+    ignore: ['dist.js', './test', 'bechmark.js', './media', './examples'],
+  })
   console.log(project.toString())
 }
 
@@ -94,5 +95,6 @@ function loadConfig(path: string): void {
     })
     .catch((e) => {
       console.error(`Configuration load failed: ${e.message}`)
+      console.error(e)
     })
 }
