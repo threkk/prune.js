@@ -1,7 +1,13 @@
 import { statSync } from 'fs'
 import { extractFiles, getDependenciesFromPackage } from './files'
 import { Graph, Relationship, Relation } from './graph'
-import { SourceFile, Import, Export } from './sourcefile'
+import {
+  SourceFile,
+  Import,
+  Export,
+  MODULE_DEFAULT,
+  MODULE_NAMESPACE,
+} from './sourcefile'
 import { isString } from 'util'
 
 const DEFAULT_IGNORED = ['.git', 'node_modules']
@@ -52,7 +58,7 @@ export default class Project {
 
     // Linking modules
     const allImports: Import[] = []
-    const allExports: { [key: string]: Export } = {}
+    const allExports: { [key: string]: Export[] } = {}
 
     for (const file of Object.values(this.files)) {
       const imports = Object.values(file.getImports()).reduce(
@@ -66,19 +72,27 @@ export default class Project {
         []
       )
       for (const exp of exports) {
-        allExports[exp.absolutePath] = exp
+        if (!allExports[exp.absolutePath]) {
+          allExports[exp.absolutePath] = []
+        }
+        allExports[exp.absolutePath].push(exp)
       }
     }
 
     const exportPaths = Object.keys(allExports)
     for (const imp of allImports) {
       if (imp.type === 'path' && exportPaths.includes(imp.path.absolutePath)) {
-        this.importEdges.push({
-          src: imp.vertex,
-          dst: allExports[imp.path.absolutePath].vertex,
-          rel: Relationship.IMPORT,
-          var: isString(imp.imported) ? imp.imported : imp.imported.toString(),
-        })
+        for (const exp of allExports[imp.path.absolutePath]) {
+          if (imp.imported === MODULE_NAMESPACE || imp.local === exp.var)
+            this.importEdges.push({
+              src: imp.vertex,
+              dst: exp.vertex,
+              rel: Relationship.IMPORT,
+              var: isString(imp.imported)
+                ? imp.imported
+                : imp.imported.toString(),
+            })
+        }
       }
     }
   }

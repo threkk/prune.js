@@ -11,8 +11,8 @@ import { Graph, Relationship, StatementVertex } from './graph'
 import { buildGraph } from './builder'
 import hash from './util/hash'
 
-const MODULE_DEFAULT = Symbol('__PRUNE_MODULE_DEFAULT')
-const MODULE_NAMESPACE = Symbol('__PRUNE_MODULE_NAMESPACE')
+export const MODULE_DEFAULT = Symbol('__PRUNE_MODULE_DEFAULT')
+export const MODULE_NAMESPACE = Symbol('__PRUNE_MODULE_NAMESPACE')
 
 export interface FileContent {
   path: PathLike
