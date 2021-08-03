@@ -1,6 +1,6 @@
 module.exports = {
-  root: '/home/threkk/projects/threkk/_university/test-projects/chalk',
-  ignore: ['./test', 'bechmark.js', './media', './examples'],
+  root: '/opt/t/chalk',
+  ignore: ['./test', 'benchmark.js', './media', './examples'],
   isLibrary: true,
   entryPoints: ['./source/index.js'],
 }

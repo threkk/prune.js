@@ -1,5 +1,5 @@
 module.exports = {
-  root: '/home/threkk/projects/threkk/_university/test-projects/dead-code',
+  root: '/opt/t/dead-code/src',
   ignore: [],
   entryPoints: ['./index.js'],
 }

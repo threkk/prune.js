@@ -67,7 +67,11 @@ class GraphBuilder {
         }
 
         // 2. Get the last statement the identifier found.
-        if (isStatementType(node) && !SKIP_STATEMENT.test(node.type)) {
+        if (
+          isStatementType(node) &&
+          !SKIP_STATEMENT.test(node.type) &&
+          !/TryStatement/.test(node.type)
+        ) {
           const vertex = this.#graph.addVertex({
             node,
             parent: currentParent,
