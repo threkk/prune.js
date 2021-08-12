@@ -69,7 +69,7 @@ function deadCode(props: ConfigProps): void {
   const statements = deadCode
     .getDeadStatements()
     .map((d) => d.toString().slice(1, -1))
-  console.log('=> Vertices', statements.length, statements)
+  console.log('=> Statements', statements.length, statements)
 }
 
 function project(props: ConfigProps): void {
