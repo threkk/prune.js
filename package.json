@@ -9,12 +9,7 @@
     "fix": "prettier --write **/*.ts"
   },
   "repository": "git+ssh://git@github.com/threkk/prune.js.git",
-  "keywords": [
-    "prune",
-    "javascript",
-    "dead",
-    "code"
-  ],
+  "keywords": ["prune", "javascript", "dead", "code"],
   "author": "Alberto Martinez de Murga Ramirez <alberto@threkk.com> (https://threkk.com)",
   "license": "ISC",
   "private": true,
@@ -26,13 +21,9 @@
   },
   "homepage": "https://github.com/threkk/prune.js#readme",
   "dependencies": {
-    "chalk": "^3.0.0",
-    "commander": "^4.1.1",
     "eslint-scope": "^5.0.0",
     "espree": "^7.1.0",
-    "estraverse": "^4.3.0",
-    "globby": "^11.0.0",
-    "winston": "^3.2.1"
+    "estraverse": "^4.3.0"
   },
   "engines": {
     "node": ">=8.0.0"
@@ -41,11 +32,8 @@
     "@types/eslint-scope": "^3.7.0",
     "@types/estraverse": "0.0.6",
     "@types/estree": "0.0.45",
-    "@types/jest": "^25.1.2",
     "@types/node": "^13.7.0",
-    "jest": "^25.1.0",
     "prettier": "^2.0.0",
-    "ts-jest": "^25.2.0",
     "ts-node": "^8.10.1",
     "typescript": "^3.9.7"
   }
