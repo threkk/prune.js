@@ -1,7 +1,7 @@
 # Prune.js
 
 > Prune.js is a tool created to detect dead code in JavaScript projects using
-> ECMAScript 6
+> ECMAScript 6.
 
 ## Getting started
 
@@ -29,7 +29,7 @@ configuration file. There are three commands available:
 - `dead-code`: Runs the tool in dead code detection mode. It will return three
   lists: one for dependencies, one for the modules and one for the statements.
 - `project-graph`: Prints a call graph of the whole project in Graphviz format.
-- `file-grap`: Prints a call graph of the module passed as a path in the third
+- `file-graph`: Prints a call graph of the module passed as a path in the third
   parameter.
 
 ### Configration file
@@ -46,10 +46,10 @@ module.exports = {
 }
 ```
 
-- _root_: Path where the project is located.
-- _entryPoints_: List of paths that point to the entry points of the project.
-- _ignore_: List of paths to ignore when executing the project.
-- _isLibrary_: Boolean that indicates if the project should be analysed as an
+- **root**: Path where the project is located.
+- **entryPoints**: List of paths that point to the entry points of the project.
+- **ignore**: List of paths to ignore when executing the project.
+- **isLibrary**: Boolean that indicates if the project should be analysed as an
   external library which is expected to be consumed.
 
 ## Why
