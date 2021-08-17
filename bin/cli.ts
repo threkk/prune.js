@@ -5,6 +5,16 @@ import { resolve, join, isAbsolute } from 'path'
 
 const [cmd, configPath, file] = process.argv.slice(2)
 
+if (!cmd) {
+  console.error('Commands: dead-code, file-graph, project-graph')
+  process.exit(1)
+}
+
+if (!configPath) {
+  console.error('Missing configuration file path.')
+  process.exit(1)
+}
+
 interface ConfigProps {
   root: string
   entryPoints: string[]

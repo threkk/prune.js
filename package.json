@@ -3,10 +3,10 @@
   "version": "0.0.1",
   "description": "Prune.js is a tool that helps you finding and deleting dead code.",
   "scripts": {
-    "test": "jest",
     "build": "tsc",
+    "fix": "prettier --write **/*.ts",
     "lint": "prettier --check **/*.ts",
-    "fix": "prettier --write **/*.ts"
+    "prunejs": "ts-node bin/cli.ts"
   },
   "repository": "git+ssh://git@github.com/threkk/prune.js.git",
   "keywords": ["prune", "javascript", "dead", "code"],
