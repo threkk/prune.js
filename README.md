@@ -6,7 +6,7 @@
 ## Getting started
 
 The project requires the latest stable version of Node.js to run, although it is
-higly likely that it will run in any version of Node.js but not compile.
+highly likely that it will run in any version of Node.js but not compile.
 
 ```
 $ git clone https://github.com/threkk/prune.js
@@ -32,7 +32,7 @@ configuration file. There are three commands available:
 - `file-graph`: Prints a call graph of the module passed as a path in the third
   parameter.
 
-### Configration file
+### Configuration file
 
 The second input is a configuration file with some information for the project
 that is necessary to run the tool. The file is a JavaScript file with the
@@ -54,13 +54,15 @@ module.exports = {
 
 ## Why
 
-This tools is part of the output of my MSc. Software Engineering at the
+This tool is part of the output of my MSc. Software Engineering at the
 University of Amsterdam. The code is provided as a reference with the intention
 to verify the results obtained and for future work. The paper will be linked as
 soon as it is published.
 
 ### Related material
 
+- [threkk/prune.js-paper](https://github.com/threkk/prune.js-paper): This repository contains the TeX files for the paper of the project.
+- [threkk/prune.js-presentation](https://github.com/threkk/prune.js-presentation): Slides used during the presentation of the project.
 - [threkk/prune.js-material](https://github.com/threkk/prune.js-material):
   Repository with the material used in the examples in the paper.
 - [threkk/dead-code-example](https://github.com/threkk/dead-code-example):
