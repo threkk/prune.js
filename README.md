@@ -3,6 +3,22 @@
 > Prune.js is a tool created to detect dead code in JavaScript projects using
 > ECMAScript 6.
 
+## About prune.js
+
+This tool is part of the output of my MSc. Software Engineering at the
+University of Amsterdam. The research is focused in the detection of dead code
+in ECMAScript 6 projects using static analysis. The code is provided as a
+reference with the intention to verify the results obtained and for future work.
+
+### Related material
+
+- [threkk/prune.js-paper](https://github.com/threkk/prune.js-paper): This repository contains the TeX files for the paper of the project.
+- [threkk/prune.js-presentation](https://github.com/threkk/prune.js-presentation): Slides used during the presentation of the project.
+- [threkk/prune.js-material](https://github.com/threkk/prune.js-material):
+  Repository with the material used in the examples in the paper.
+- [threkk/dead-code-example](https://github.com/threkk/dead-code-example):
+  Example project to run prune.js against.
+
 ## Getting started
 
 The project requires the latest stable version of Node.js to run, although it is
@@ -51,19 +67,3 @@ module.exports = {
 - **ignore**: List of paths to ignore when executing the project.
 - **isLibrary**: Boolean that indicates if the project should be analysed as an
   external library which is expected to be consumed.
-
-## Why
-
-This tool is part of the output of my MSc. Software Engineering at the
-University of Amsterdam. The code is provided as a reference with the intention
-to verify the results obtained and for future work. The paper will be linked as
-soon as it is published.
-
-### Related material
-
-- [threkk/prune.js-paper](https://github.com/threkk/prune.js-paper): This repository contains the TeX files for the paper of the project.
-- [threkk/prune.js-presentation](https://github.com/threkk/prune.js-presentation): Slides used during the presentation of the project.
-- [threkk/prune.js-material](https://github.com/threkk/prune.js-material):
-  Repository with the material used in the examples in the paper.
-- [threkk/dead-code-example](https://github.com/threkk/dead-code-example):
-  Example project to run prune.js against.
